@@ -1,0 +1,13 @@
+bin/
+obj/
+.vs/
+aktualizace/
+automaticke-panorama/
+oprava-smeru/
+overeni-zatacek/
+prolinani/
+rezim-jizdy/
+ulozeny-klic/
+vyhled-jizdy/
+*.WebView2/
+*.key
