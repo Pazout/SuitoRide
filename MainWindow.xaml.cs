@@ -113,7 +113,7 @@ public partial class MainWindow : Window
             if((f&1)==0){v=BitConverter.ToUInt16(b,i)/100.0;i+=2;}if((f&2)!=0)i+=2;
             if((f&4)!=0){c=BitConverter.ToUInt16(b,i)/2.0;i+=2;}if((f&8)!=0)i+=2;if((f&16)!=0)i+=3;if((f&32)!=0)i+=2;
             if((f&64)!=0)p=BitConverter.ToInt16(b,i);
-            Dispatcher.BeginInvoke(()=>{if(v.HasValue){speed=v.Value;lastData=DateTime.UtcNow;Speed.Text=$"{speed:F1} km/h";}if(c.HasValue)Cadence.Text=$"{c:F0} ot/min";if(p.HasValue){Power.Text=$"{p:F0} W";currentPower=p.Value;powerReceived=DateTime.UtcNow;}});
+            Dispatcher.BeginInvoke(()=>{if(v.HasValue){speed=v.Value;lastData=DateTime.UtcNow;Speed.Text=$"{speed:F1} km/h";}if(c.HasValue){Cadence.Text=$"{c:F0} ot/min";currentCadence=c.Value;cadenceReceived=DateTime.UtcNow;}if(p.HasValue){Power.Text=$"{p:F0} W";currentPower=p.Value;powerReceived=DateTime.UtcNow;}});
         }catch(ArgumentException){}
     }
     async void StartRide(object s,RoutedEventArgs e){
@@ -122,13 +122,17 @@ public partial class MainWindow : Window
         if(riding||ticking||countdown!=null||starting)return;if(pendingRide!=null){Status.Text="Nejprve ulož čekající jízdu.";return;}starting=true;try{if(!await PrepareCountdown())return;if(control==null||device?.ConnectionStatus!=BluetoothConnectionStatus.Connected){Status.Text="Trenažér není připojen.";return;}await Command([7]);demo=false;BeginRide();}catch(Exception ex){Status.Text="Jízdu nelze spustit: "+ex.Message;}finally{starting=false;}
     }
     async void StartDemo(object s,RoutedEventArgs e){if(route.Count<2){Status.Text="Nejprve načtěte GPX.";return;}if(riding||ticking||countdown!=null||starting)return;starting=true;try{if(!await PrepareCountdown())return;demo=true;BeginRide();}finally{starting=false;}}
-    void BeginRide(){if(distance>=route[^1].D){distance=0;lastStreetDistance=double.NaN;UpdateStreetView(true);}lastGrade=double.NaN;lastTick=DateTime.UtcNow;session=demo?null:new RideSession(RouteName.Text,distance);currentPower=null;powerReceived=DateTime.MinValue;riding=true;SetRideMode(true);UpdateStreetView(true);timer.Start();PlayCountdownSound(true);Status.Text=demo?"Ukázková jízda: odpor se nemění.":"Jízda zahájena.";}
+    void BeginRide(){if(distance>=route[^1].D){distance=0;lastStreetDistance=double.NaN;UpdateStreetView(true);}lastGrade=double.NaN;lastTick=DateTime.UtcNow;session=demo?null:new RideSession(RouteName.Text,distance);currentPower=null;currentCadence=null;powerReceived=DateTime.MinValue;cadenceReceived=DateTime.MinValue;riding=true;SetRideMode(true);UpdateStreetView(true);timer.Start();PlayCountdownSound(true);Status.Text=demo?"Ukázková jízda: odpor se nemění.":"Jízda zahájena.";}
     async void Tick(object? s,EventArgs e){
         if(!riding||ticking)return;ticking=true;try{
             var now=DateTime.UtcNow;double dt=Math.Clamp((now-lastTick).TotalSeconds,0,2);lastTick=now;
             if(demo)speed=20;else if((now-lastData).TotalSeconds>5)speed=0;
             if(session!=null && currentPower.HasValue && (now-powerReceived).TotalSeconds<=5)session.AddPower(currentPower.Value,dt);
-            distance=Math.Min(route[^1].D,distance+speed/3.6*dt);double grade=Slope();UpdateView();
+            distance=Math.Min(route[^1].D,distance+speed/3.6*dt);
+            session?.AddSample(distance,(now-lastData).TotalSeconds<=5?speed:null,
+                (now-cadenceReceived).TotalSeconds<=5?currentCadence:null,
+                (now-powerReceived).TotalSeconds<=5?currentPower:null);
+            double grade=Slope();UpdateView();
             if(!demo&&(double.IsNaN(lastGrade)||Math.Abs(grade-lastGrade)>=0.5)){
                 short raw=(short)Math.Round(grade*100);await Command([0x11,0,0,(byte)(raw&255),(byte)((raw>>8)&255),40,51]);lastGrade=grade;
             }
@@ -303,7 +307,8 @@ public partial class MainWindow : Window
     readonly RideHistoryStore historyStore=new();
     RideSession? session;
     RideRecord? pendingRide;
-    double? currentPower;
+    double? currentPower, currentCadence;
+    DateTime cadenceReceived=DateTime.MinValue;
     DateTime powerReceived=DateTime.MinValue;
     string EndRide(string result)
     {

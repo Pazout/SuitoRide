@@ -32,3 +32,11 @@ Pro test použijte stejný GPX, připojte se do místnosti a na obou počítač�
 Server lze alternativně spustit samostatně z projektu SpolecnaJizda.Server. Server vystavený do veřejného internetu musí používat HTTPS, například prostřednictvím reverzní proxy. Tlačítko Vytvořit místnost spouští místní server hostitele; na samostatném serveru založíš místnost tlačítkem Vytvořit na serveru po zadání jeho adresy. Bezpečné nasazení, dostupnost portů a ověření sítě zajišťuje provozovatel.
 
 Pro vlastní sestavení balíčku spusť ve složce projektu `dotnet build -c Release -o .\spolecna-jizda` a potom `dotnet publish SpolecnaJizda.Server\SpolecnaJizda.Server.csproj -c Release -r win-x64 --self-contained true -o .\spolecna-jizda\server`. Kamarád potřebuje celou složku se sestavením a nainstalovaný .NET 10 Desktop Runtime; server hostitele má přibalené vlastní běhové prostředí.
+
+## Strava
+
+V Historii tréninků vyber uloženou skutečnou jízdu. Tlačítko Uložit TCX vytvoří soubor, který lze nahrát přes https://www.strava.com/upload/select i bez API propojení.
+
+Pro přímé odeslání otevři Propojit Stravu, vytvoř vlastní Strava API aplikaci, nastav její autorizační doménu na localhost a do Suito Ride vyplň Client ID a Client Secret. Potvrď přístup v prohlížeči. Podle aktuálních podmínek Stravy je k vytvoření vlastní API aplikace potřeba předplatné. Přístupové údaje se ukládají chráněné pro aktuální účet Windows; soukromí odeslané aktivity se řídí nastavením Stravy. Odesílání je ruční, stiskem tlačítka u vybrané jízdy. Po nejasném výsledku přenosu nejprve ověř aktivitu přímo na Stravě.
+
+Nové skutečné jízdy ukládají během jízdy dostupný výkon, kadenci, rychlost a vzdálenost. Starší záznamy mají pouze dříve uložený souhrn; podrobný průběh z nich nelze zpětně získat. Protože se jedná o virtuální trénink, export neobsahuje předstíraný GPS záznam.
