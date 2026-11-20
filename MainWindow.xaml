@@ -7,10 +7,10 @@
     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
     <ScrollViewer x:Name="SetupPanel" Grid.Row="0" MaxHeight="260" VerticalScrollBarVisibility="Auto" Margin="0,0,0,8">
       <StackPanel>
-        <TextBlock Text="SUITO RIDE" FontSize="24" FontWeight="Bold" Margin="0,0,0,8"/>
+        <WrapPanel><TextBlock Text="SUITO RIDE" FontSize="24" FontWeight="Bold" Margin="0,0,20,8"/><Button Content="Historie tréninků" Click="ShowHistory"/><Button x:Name="RetrySaveButton" Content="Uložit čekající jízdu" Click="RetrySaveRide" Visibility="Collapsed"/></WrapPanel>
         <WrapPanel><Button Content="Vybrat složku tras" Click="ChooseFolder"/><Button Content="Obnovit katalog" Click="RefreshCatalog"/><ComboBox x:Name="Catalog" Width="250" Margin="0,0,10,6" DisplayMemberPath="Name"/><Button Content="Načíst z katalogu" Click="LoadCatalog"/></WrapPanel>
         <TextBlock x:Name="CatalogInfo" Foreground="#99b2bf" Margin="0,0,0,6" Text="Katalog: složka zatím není vybrána."/>
-        <WrapPanel><Button Content="Načíst GPX" Click="LoadRoute"/><Button Content="Vyhledat trenažér" Click="Scan"/><ComboBox x:Name="Devices" DisplayMemberPath="Name" Width="220" Margin="0,0,10,6"/><Button Content="Připojit vybraný" Click="Connect"/><Button Content="Odpojit" Click="Disconnect"/></WrapPanel>
+        <WrapPanel><Button Content="Načíst GPX" Click="LoadRoute"/><Button Content="Upravit trasu" Click="EditRoute"/><Button Content="Vyhledat trenažér" Click="Scan"/><ComboBox x:Name="Devices" DisplayMemberPath="Name" Width="220" Margin="0,0,10,6"/><Button Content="Připojit vybraný" Click="Connect"/><Button Content="Odpojit" Click="Disconnect"/></WrapPanel>
         <TextBlock x:Name="RouteName" Text="Zatím není načtená žádná trasa" FontSize="18" FontWeight="SemiBold"/>
         <TextBlock x:Name="RouteInfo" Foreground="#99b2bf" Margin="0,2,0,6"/>
         <WrapPanel><Button Content="Street View v prohlížeči" Click="OpenStreetView"/></WrapPanel>

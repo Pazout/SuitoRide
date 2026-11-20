@@ -28,7 +28,7 @@ public partial class MainWindow : Window
     double distance,speed,lastGrade=double.NaN;
     DateTime lastData=DateTime.MinValue,lastTick;
     bool riding,demo,ticking;
-    public MainWindow(){InitializeComponent();timer.Tick+=Tick;Loaded+=(_,_)=>{InitMap();RestoreCatalog();UpdateKeyStatus();AutoStartPanorama();};Closed+=(_,_)=>{watcher?.Stop();DisconnectCore();};}
+    public MainWindow(){InitializeComponent();timer.Tick+=Tick;Closing+=HandleClosing;Loaded+=(_,_)=>{InitMap();RestoreCatalog();UpdateKeyStatus();AutoStartPanorama();};Closed+=(_,_)=>{watcher?.Stop();DisconnectCore();};}
     void LoadRoute(object s,RoutedEventArgs e)
     {
         if(riding||ticking){Status.Text="Nejprve zastavte jízdu.";return;}
@@ -51,10 +51,11 @@ public partial class MainWindow : Window
                 double ele=double.Parse(n.Elements().FirstOrDefault(x=>x.Name.LocalName=="ele")?.Value??"",CultureInfo.InvariantCulture);
                 if(!double.IsFinite(lat)||!double.IsFinite(lon)||!double.IsFinite(ele)||Math.Abs(lat)>90||Math.Abs(lon)>180)throw new Exception("Neplatné souřadnice nebo výška.");
                 double d=points.Count==0?0:points[^1].D+Dist(points[^1].Lat,points[^1].Lon,lat,lon);
-                if(points.Count==0||d>points[^1].D+0.1)points.Add(new(lat,lon,ele,d));
+                if(points.Count==0||d>points[^1].D+0.000001)points.Add(new(lat,lon,ele,d));
             }
             if(points.Count<2||points[^1].D<10)throw new Exception("Trasa musí mít alespoň dva různé body s výškou.");
             riding=false;timer.Stop();SetRideMode(false);route.Clear();route.AddRange(points);distance=0;
+            routeSourcePath=System.IO.Path.GetFullPath(path);
             RouteName.Text=System.IO.Path.GetFileNameWithoutExtension(path);
             RouteInfo.Text=$"{route[^1].D/1000:F1} km · {route.Count} bodů · výška {route.Min(p=>p.Ele):F0}–{route.Max(p=>p.Ele):F0} m";
             Status.Text="Trasa načtena.";lastStreetDistance=double.NaN;UpdateView();SendRoute();UpdateStreetView(true);
@@ -94,7 +95,7 @@ public partial class MainWindow : Window
             await Command([0]);Status.Text=$"Připojeno: {selected.Name}.";
         }catch(Exception ex){DisconnectCore();Status.Text="Připojení selhalo: "+ex.Message;}
     }
-    void ConnectionChanged(BluetoothLEDevice s,object e){if(s.ConnectionStatus==BluetoothConnectionStatus.Disconnected)Dispatcher.BeginInvoke(()=>{if(ReferenceEquals(device,s)){riding=false;timer.Stop();SetRideMode(false);Status.Text="Trenažér se odpojil. Jízda zastavena.";}});}
+    void ConnectionChanged(BluetoothLEDevice s,object e){if(s.ConnectionStatus==BluetoothConnectionStatus.Disconnected)Dispatcher.BeginInvoke(()=>{if(ReferenceEquals(device,s)){riding=false;timer.Stop();SetRideMode(false);Status.Text="Trenažér se odpojil. Jízda zastavena."+EndRide("Přerušeno");}});}
     void ControlChanged(GattCharacteristic s,GattValueChangedEventArgs e){var b=new byte[e.CharacteristicValue.Length];DataReader.FromBuffer(e.CharacteristicValue).ReadBytes(b);reply?.TrySetResult(b);}
     async Task Command(byte[] b){
         await gate.WaitAsync();try{
@@ -111,31 +112,32 @@ public partial class MainWindow : Window
             if((f&1)==0){v=BitConverter.ToUInt16(b,i)/100.0;i+=2;}if((f&2)!=0)i+=2;
             if((f&4)!=0){c=BitConverter.ToUInt16(b,i)/2.0;i+=2;}if((f&8)!=0)i+=2;if((f&16)!=0)i+=3;if((f&32)!=0)i+=2;
             if((f&64)!=0)p=BitConverter.ToInt16(b,i);
-            Dispatcher.BeginInvoke(()=>{if(v.HasValue){speed=v.Value;lastData=DateTime.UtcNow;Speed.Text=$"{speed:F1} km/h";}if(c.HasValue)Cadence.Text=$"{c:F0} ot/min";if(p.HasValue)Power.Text=$"{p:F0} W";});
+            Dispatcher.BeginInvoke(()=>{if(v.HasValue){speed=v.Value;lastData=DateTime.UtcNow;Speed.Text=$"{speed:F1} km/h";}if(c.HasValue)Cadence.Text=$"{c:F0} ot/min";if(p.HasValue){Power.Text=$"{p:F0} W";currentPower=p.Value;powerReceived=DateTime.UtcNow;}});
         }catch(ArgumentException){}
     }
     async void StartRide(object s,RoutedEventArgs e){
         if(route.Count<2){Status.Text="Nejprve načtěte GPX.";return;}
         if(control==null||device?.ConnectionStatus!=BluetoothConnectionStatus.Connected){Status.Text="Nejprve připojte trenažér.";return;}
-        if(riding||ticking)return;try{await Command([7]);demo=false;BeginRide();}catch(Exception ex){Status.Text="Jízdu nelze spustit: "+ex.Message;}
+        if(riding||ticking||countdown!=null||starting)return;if(pendingRide!=null){Status.Text="Nejprve ulož čekající jízdu.";return;}starting=true;try{if(!await PrepareCountdown())return;if(control==null||device?.ConnectionStatus!=BluetoothConnectionStatus.Connected){Status.Text="Trenažér není připojen.";return;}await Command([7]);demo=false;BeginRide();}catch(Exception ex){Status.Text="Jízdu nelze spustit: "+ex.Message;}finally{starting=false;}
     }
-    void StartDemo(object s,RoutedEventArgs e){if(route.Count<2){Status.Text="Nejprve načtěte GPX.";return;}if(riding||ticking)return;demo=true;BeginRide();}
-    void BeginRide(){if(distance>=route[^1].D){distance=0;lastStreetDistance=double.NaN;UpdateStreetView(true);}lastGrade=double.NaN;lastTick=DateTime.UtcNow;riding=true;SetRideMode(true);UpdateStreetView(true);timer.Start();Status.Text=demo?"Ukázková jízda: odpor se nemění.":"Jízda zahájena.";}
+    async void StartDemo(object s,RoutedEventArgs e){if(route.Count<2){Status.Text="Nejprve načtěte GPX.";return;}if(riding||ticking||countdown!=null||starting)return;starting=true;try{if(!await PrepareCountdown())return;demo=true;BeginRide();}finally{starting=false;}}
+    void BeginRide(){if(distance>=route[^1].D){distance=0;lastStreetDistance=double.NaN;UpdateStreetView(true);}lastGrade=double.NaN;lastTick=DateTime.UtcNow;session=demo?null:new RideSession(RouteName.Text,distance);currentPower=null;powerReceived=DateTime.MinValue;riding=true;SetRideMode(true);UpdateStreetView(true);timer.Start();Status.Text=demo?"Ukázková jízda: odpor se nemění.":"Jízda zahájena.";}
     async void Tick(object? s,EventArgs e){
         if(!riding||ticking)return;ticking=true;try{
             var now=DateTime.UtcNow;double dt=Math.Clamp((now-lastTick).TotalSeconds,0,2);lastTick=now;
             if(demo)speed=20;else if((now-lastData).TotalSeconds>5)speed=0;
+            if(session!=null && currentPower.HasValue && (now-powerReceived).TotalSeconds<=5)session.AddPower(currentPower.Value,dt);
             distance=Math.Min(route[^1].D,distance+speed/3.6*dt);double grade=Slope();UpdateView();
             if(!demo&&(double.IsNaN(lastGrade)||Math.Abs(grade-lastGrade)>=0.5)){
                 short raw=(short)Math.Round(grade*100);await Command([0x11,0,0,(byte)(raw&255),(byte)((raw>>8)&255),40,51]);lastGrade=grade;
             }
-            if(distance>=route[^1].D){riding=false;timer.Stop();SetRideMode(false);if(!demo)await Command([8,1]);Status.Text="Trasa dokončena.";}
-        }catch(Exception ex){riding=false;timer.Stop();SetRideMode(false);Status.Text="Jízda zastavena: "+ex.Message;}finally{ticking=false;}
+            if(riding && distance>=route[^1].D){riding=false;timer.Stop();SetRideMode(false);string saved=EndRide("Dokončeno");if(!demo)await Command([8,1]);Status.Text="Trasa dokončena."+saved;}
+        }catch(Exception ex){riding=false;timer.Stop();SetRideMode(false);Status.Text="Jízda zastavena: "+ex.Message+EndRide("Přerušeno");}finally{ticking=false;}
     }
     void UpdateView(){if(route.Count<2)return;Progress.Value=distance/route[^1].D*100;Grade.Text=$"{Slope():F1} %";RideInfo.Text=$"Ujeto {distance/1000:F2} z {route[^1].D/1000:F2} km"+(demo?" · ukázková jízda":"");if(demo)Speed.Text=$"{speed:F1} km/h";DrawProfile(null,null);SendPosition();}
-    async void StopRide(object s,RoutedEventArgs e){bool real=riding&&!demo;riding=false;timer.Stop();SetRideMode(false);Status.Text="Jízda zastavena.";if(real)try{await Command([8,1]);}catch(Exception ex){Status.Text="Jízda zastavena, trenažér nepotvrdil zastavení: "+ex.Message;}}
+    async void StopRide(object s,RoutedEventArgs e){if(countdown!=null){countdown.Cancel();Status.Text="Odpočítávání zrušeno.";return;}bool real=riding&&!demo;riding=false;timer.Stop();SetRideMode(false);Status.Text="Jízda zastavena."+EndRide("Ukončeno");if(real)try{await Command([8,1]);}catch(Exception ex){Status.Text="Jízda zastavena, trenažér nepotvrdil zastavení: "+ex.Message;}}
     void Disconnect(object s,RoutedEventArgs e){DisconnectCore();Status.Text="Trenažér odpojen.";}
-    void DisconnectCore(){riding=false;timer.Stop();SetRideMode(false);speed=0;lastData=DateTime.MinValue;if(data!=null)data.ValueChanged-=DataChanged;if(control!=null)control.ValueChanged-=ControlChanged;if(device!=null)device.ConnectionStatusChanged-=ConnectionChanged;service?.Dispose();device?.Dispose();service=null;device=null;data=null;control=null;}
+    void DisconnectCore(){EndRide("Přerušeno");riding=false;timer.Stop();SetRideMode(false);speed=0;lastData=DateTime.MinValue;if(data!=null)data.ValueChanged-=DataChanged;if(control!=null)control.ValueChanged-=ControlChanged;if(device!=null)device.ConnectionStatusChanged-=ConnectionChanged;service?.Dispose();device?.Dispose();service=null;device=null;data=null;control=null;}
 
     bool mapReady;
     string? catalogFolder;
@@ -295,4 +297,117 @@ public partial class MainWindow : Window
         StartButton.Visibility=active?Visibility.Collapsed:Visibility.Visible;
         DemoButton.Visibility=active?Visibility.Collapsed:Visibility.Visible;
         StopButton.Visibility=active?Visibility.Visible:Visibility.Collapsed;
+    }
+    readonly RideHistoryStore historyStore=new();
+    RideSession? session;
+    RideRecord? pendingRide;
+    double? currentPower;
+    DateTime powerReceived=DateTime.MinValue;
+    string EndRide(string result)
+    {
+        if(session==null)return "";
+        var record=session.Finish(distance,result);
+        session=null;
+        if(record.DistanceMeters<0.1)return "";
+        pendingRide=record;
+        try {
+            historyStore.Save(record); pendingRide=null; RetrySaveButton.Visibility=Visibility.Collapsed;
+            return " Jízda uložena do historie.";
+        } catch(Exception) {
+            RetrySaveButton.Visibility=Visibility.Visible;
+            return " Jízdu se nepodařilo uložit. Použij tlačítko Uložit čekající jízdu.";
+        }
+    }
+    void RetrySaveRide(object s,RoutedEventArgs e)
+    {
+        if(pendingRide==null)return;
+        try { historyStore.Save(pendingRide);pendingRide=null;RetrySaveButton.Visibility=Visibility.Collapsed;Status.Text="Jízda uložena do historie."; }
+        catch(Exception ex) { Status.Text="Jízdu nelze uložit: "+ex.Message; }
+    }
+    void ShowHistory(object s,RoutedEventArgs e) => new HistoryWindow(historyStore) { Owner=this }.ShowDialog();
+    void HandleClosing(object? sender,System.ComponentModel.CancelEventArgs e)
+    {
+        countdown?.Cancel();
+        EndRide("Přerušeno");
+        if(pendingRide!=null) {
+            riding=false;timer.Stop();SetRideMode(false);
+            e.Cancel=true;
+            Status.Text="Jízdu se nepodařilo uložit. Zkontroluj přístup k datům a zkus uložení znovu.";
+            MessageBox.Show(Status.Text,"Neuložená jízda",MessageBoxButton.OK,MessageBoxImage.Warning);
+        }
+    }
+
+    string? routeSourcePath;
+    List<Pt> CreateEditedRoute(double start, double end, bool reverse)
+    {
+        if(route.Count<2 || start<0 || end>route[^1].D || end-start<10)throw new ArgumentException("Neplatný úsek trasy.");
+        var first=PositionAt(start); var last=PositionAt(end);
+        var selected=new List<Pt>{new(first.Lat,first.Lon,Elev(start),0)};
+        selected.AddRange(route.Where(p=>p.D>start && p.D<end));
+        selected.Add(new(last.Lat,last.Lon,Elev(end),0));
+        if(reverse)selected.Reverse();
+        var result=new List<Pt>();double length=0;
+        foreach(var point in selected)
+        {
+            if(result.Count>0){double step=Dist(result[^1].Lat,result[^1].Lon,point.Lat,point.Lon);if(step<0.000001)continue;length+=step;}
+            result.Add(new(point.Lat,point.Lon,point.Ele,length));
+        }
+        if(result.Count<2 || length<1)throw new InvalidDataException("Vybraný úsek neobsahuje dostatek různých bodů.");
+        return result;
+    }
+    void EditRoute(object s,RoutedEventArgs e)
+    {
+        if(riding||ticking){Status.Text="Nejprve zastavte jízdu.";return;}
+        if(route.Count<2){Status.Text="Nejprve načtěte GPX trasu.";return;}
+        var dialog=new RouteEditWindow(route[^1].D){Owner=this};
+        if(dialog.ShowDialog()!=true)return;
+        try {
+            var edited=CreateEditedRoute(dialog.StartMeters,dialog.EndMeters,dialog.Reverse);
+            route.Clear();route.AddRange(edited);distance=0;lastStreetDistance=double.NaN;
+            RouteName.Text=RouteName.Text+" – upravená";
+            RouteInfo.Text=$"{route[^1].D/1000:F1} km · {route.Count} bodů · výška {route.Min(p=>p.Ele):F0}–{route.Max(p=>p.Ele):F0} m";
+            UpdateView();SendRoute();UpdateStreetView(true);
+            Status.Text="Upravená trasa je připravena k jízdě.";
+            if(MessageBox.Show(this,"Chceš upravenou trasu uložit jako nový GPX soubor?","Upravit trasu",MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes)return;
+            var save=new SaveFileDialog{Filter="GPX trasa (*.gpx)|*.gpx",DefaultExt=".gpx",AddExtension=true,FileName=RouteName.Text+".gpx",OverwritePrompt=true};
+            if(save.ShowDialog(this)!=true){Status.Text="Trasa je upravená pro tuto jízdu; GPX nebyl uložen.";return;}
+            if(routeSourcePath!=null && string.Equals(System.IO.Path.GetFullPath(save.FileName),System.IO.Path.GetFullPath(routeSourcePath),StringComparison.OrdinalIgnoreCase))
+            { MessageBox.Show(this,"Vyber jiný soubor, aby původní GPX zůstal zachován.","Uložit trasu");Status.Text="GPX nebyl uložen.";return; }
+            SaveEditedGpx(save.FileName);
+            routeSourcePath=System.IO.Path.GetFullPath(save.FileName);
+            Status.Text="Upravená trasa byla uložena jako nový GPX.";
+            if(!string.IsNullOrEmpty(catalogFolder))RefreshCatalogCore();
+        } catch(Exception ex) { MessageBox.Show(this,"Úpravu nebo uložení trasy se nepodařilo dokončit: "+ex.Message,"Upravit trasu"); }
+    }
+
+    CancellationTokenSource? countdown;
+    bool starting;
+    async Task<bool> PrepareCountdown()
+    {
+        if(countdown!=null)return false;
+        var cancel=new CancellationTokenSource();countdown=cancel;
+        StartButton.IsEnabled=false;DemoButton.IsEnabled=false;SetupPanel.IsEnabled=false;
+        StopButton.Visibility=Visibility.Visible;
+        try {
+            for(int remaining=5;remaining>0;remaining--) {
+                Status.Text=$"Jízda začne za {remaining} s…";
+                await Task.Delay(1000,cancel.Token);
+            }
+            return true;
+        } catch(OperationCanceledException) { return false; }
+        finally {
+            if(ReferenceEquals(countdown,cancel))countdown=null;
+            cancel.Dispose();StartButton.IsEnabled=true;DemoButton.IsEnabled=true;SetupPanel.IsEnabled=true;
+            if(!riding)StopButton.Visibility=Visibility.Collapsed;
+        }
+    }
+    void SaveEditedGpx(string path)
+    {
+        XNamespace ns="http://www.topografix.com/GPX/1/1";
+        var doc=new XDocument(new XDeclaration("1.0","utf-8",null),
+            new XElement(ns+"gpx",new XAttribute("version","1.1"),new XAttribute("creator","Suito Ride"),
+                new XElement(ns+"trk",new XElement(ns+"name",RouteName.Text),
+                    new XElement(ns+"trkseg",route.Select(p=>new XElement(ns+"trkpt",
+                        new XAttribute("lat",p.Lat),new XAttribute("lon",p.Lon),new XElement(ns+"ele",p.Ele)))))));
+        doc.Save(path);
     }}
