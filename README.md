@@ -1,6 +1,6 @@
 # Suito Ride – první verze
 
-Samostatná aplikace pro Windows v C# (.NET 10 / WPF). Spusťte bin\Release\net10.0-windows10.0.19041.0\SuitoRide.exe. Spouštěcí soubor potřebuje ostatní soubory ve stejné složce a nainstalovaný .NET 10 Desktop Runtime.
+Samostatná aplikace pro Windows v C# (.NET 10 / WPF). Spusťte app\SuitoRide.exe. Spouštěcí soubor potřebuje ostatní soubory ve stejné složce a nainstalovaný .NET 10 Desktop Runtime.
 
 1. Načtěte GPX s výškou v každém bodě a jedním souvislým úsekem. Ukázkový soubor je ukazka.gpx.
 2. Pro náhled bez přístroje vyberte Ukázková jízda.
@@ -14,7 +14,7 @@ V této verzi se Mapy.com zobrazují přímo vedle mapy jako statické panoramat
 
 Alternativně lze zvolit Google Street View a zadat Google Maps Embed API klíč s aktivovanou fakturací. Google zobrazuje interaktivní panorama. Pohledy přeskakují mezi snímky, nejedná se o plynulé video. Zaškrtnutím Mapa ve směru jízdy se mapa otočí podle GPX. Přepínač Sledovat jezdce ji udržuje na poloze jezdce.
 
-Zdrojový projekt lze sestavit příkazem dotnet build -c Release. Během jízdy panorama vyplní většinu mapového panelu a mapa se zobrazí menší. Aplikace vyžaduje internet a Microsoft Edge WebView2 Runtime.
+Aktuální aplikaci i server pro společné jízdy lze sestavit skriptem Sestavit.ps1 vždy do stejné složky app; před sestavením ji zavři. Během jízdy panorama vyplní většinu mapového panelu a mapa se zobrazí menší. Aplikace vyžaduje internet a Microsoft Edge WebView2 Runtime.
 ## Úprava trasy a start
 
 Tlačítko Upravit trasu umožňuje přetažením značek na výškovém profilu nebo pomocí posuvníků vybrat začátek a cíl a obrátit směr vybraného úseku. Po potvrzení lze výsledek uložit do nového GPX souboru. Export obsahuje souřadnice a nadmořskou výšku trasy; ostatní údaje a rozšíření původního GPX nepřenáší. Bez uložení platí změna jen pro aktuální načtenou trasu.
@@ -31,7 +31,7 @@ Pro test použijte stejný GPX, připojte se do místnosti a na obou počítač�
 
 Server lze alternativně spustit samostatně z projektu SpolecnaJizda.Server. Server vystavený do veřejného internetu musí používat HTTPS, například prostřednictvím reverzní proxy. Tlačítko Vytvořit místnost spouští místní server hostitele; na samostatném serveru založíš místnost tlačítkem Vytvořit na serveru po zadání jeho adresy. Bezpečné nasazení, dostupnost portů a ověření sítě zajišťuje provozovatel.
 
-Pro vlastní sestavení balíčku spusť ve složce projektu `dotnet build -c Release -o .\spolecna-jizda` a potom `dotnet publish SpolecnaJizda.Server\SpolecnaJizda.Server.csproj -c Release -r win-x64 --self-contained true -o .\spolecna-jizda\server`. Kamarád potřebuje celou složku se sestavením a nainstalovaný .NET 10 Desktop Runtime; server hostitele má přibalené vlastní běhové prostředí.
+Pro vlastní sestavení spusť ve složce projektu skript `Sestavit.ps1`. Sestaví aplikaci i server do složky app. Kamarád potřebuje celou složku se sestavením a nainstalovaný .NET 10 Desktop Runtime; server hostitele má přibalené vlastní běhové prostředí.
 
 ## Strava
 
@@ -40,3 +40,5 @@ V Historii tréninků vyber uloženou skutečnou jízdu. Tlačítko Uložit TCX 
 Pro přímé odeslání otevři Propojit Stravu, vytvoř vlastní Strava API aplikaci, nastav její autorizační doménu na localhost a do Suito Ride vyplň Client ID a Client Secret. Potvrď přístup v prohlížeči. Podle aktuálních podmínek Stravy je k vytvoření vlastní API aplikace potřeba předplatné. Přístupové údaje se ukládají chráněné pro aktuální účet Windows; soukromí odeslané aktivity se řídí nastavením Stravy. Odesílání je ruční, stiskem tlačítka u vybrané jízdy. Po nejasném výsledku přenosu nejprve ověř aktivitu přímo na Stravě.
 
 Nové skutečné jízdy ukládají během jízdy dostupný výkon, kadenci, rychlost a vzdálenost. Starší záznamy mají pouze dříve uložený souhrn; podrobný průběh z nich nelze zpětně získat. Protože se jedná o virtuální trénink, export neobsahuje předstíraný GPS záznam.
+
+Data vloženého prohlížeče se u nových sestavení ukládají společně do LocalAppData\SuitoRide\WebView2, nikoli do každého sestavení zvlášť.

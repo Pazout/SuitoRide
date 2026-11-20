@@ -150,7 +150,9 @@ public partial class MainWindow : Window
     async void InitMap()
     {
         try {
-            await MapView.EnsureCoreWebView2Async();
+            var webData=System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"SuitoRide","WebView2");
+            var webEnvironment=await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(userDataFolder:webData);
+            await MapView.EnsureCoreWebView2Async(webEnvironment);
             MapView.CoreWebView2.SetVirtualHostNameToFolderMapping("suitoride.local",System.IO.Path.Combine(AppContext.BaseDirectory,"map"),Microsoft.Web.WebView2.Core.CoreWebView2HostResourceAccessKind.Allow);
             MapView.CoreWebView2.Settings.AreDefaultContextMenusEnabled=false;
             MapView.CoreWebView2.WebMessageReceived+=(_,e)=>{
