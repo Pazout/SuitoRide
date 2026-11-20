@@ -122,7 +122,7 @@ public partial class MainWindow : Window
         if(riding||ticking||countdown!=null||starting)return;if(pendingRide!=null){Status.Text="Nejprve ulož čekající jízdu.";return;}starting=true;try{if(!await PrepareCountdown())return;if(control==null||device?.ConnectionStatus!=BluetoothConnectionStatus.Connected){Status.Text="Trenažér není připojen.";return;}await Command([7]);demo=false;BeginRide();}catch(Exception ex){Status.Text="Jízdu nelze spustit: "+ex.Message;}finally{starting=false;}
     }
     async void StartDemo(object s,RoutedEventArgs e){if(route.Count<2){Status.Text="Nejprve načtěte GPX.";return;}if(riding||ticking||countdown!=null||starting)return;starting=true;try{if(!await PrepareCountdown())return;demo=true;BeginRide();}finally{starting=false;}}
-    void BeginRide(){if(distance>=route[^1].D){distance=0;lastStreetDistance=double.NaN;UpdateStreetView(true);}lastGrade=double.NaN;lastTick=DateTime.UtcNow;session=demo?null:new RideSession(RouteName.Text,distance);currentPower=null;powerReceived=DateTime.MinValue;riding=true;SetRideMode(true);UpdateStreetView(true);timer.Start();Status.Text=demo?"Ukázková jízda: odpor se nemění.":"Jízda zahájena.";}
+    void BeginRide(){if(distance>=route[^1].D){distance=0;lastStreetDistance=double.NaN;UpdateStreetView(true);}lastGrade=double.NaN;lastTick=DateTime.UtcNow;session=demo?null:new RideSession(RouteName.Text,distance);currentPower=null;powerReceived=DateTime.MinValue;riding=true;SetRideMode(true);UpdateStreetView(true);timer.Start();PlayCountdownSound(true);Status.Text=demo?"Ukázková jízda: odpor se nemění.":"Jízda zahájena.";}
     async void Tick(object? s,EventArgs e){
         if(!riding||ticking)return;ticking=true;try{
             var now=DateTime.UtcNow;double dt=Math.Clamp((now-lastTick).TotalSeconds,0,2);lastTick=now;
@@ -391,14 +391,23 @@ public partial class MainWindow : Window
         var cancel=new CancellationTokenSource();countdown=cancel;
         StartButton.IsEnabled=false;DemoButton.IsEnabled=false;SetupPanel.IsEnabled=false;
         StopButton.Visibility=Visibility.Visible;
+        CountdownWindow? overlay=null;
         try {
-            for(int remaining=5;remaining>0;remaining--) {
+            overlay=new CountdownWindow(()=>{if(!cancel.IsCancellationRequested){Status.Text="Odpočítávání zrušeno.";cancel.Cancel();}});
+            if(IsVisible)overlay.Owner=this;
+            overlay.Show();
+            for(int remaining=10;remaining>0;remaining--) {
                 Status.Text=$"Jízda začne za {remaining} s…";
+                overlay.SetRemaining(remaining);
+                if(remaining<=3)PlayCountdownSound(false);
                 await Task.Delay(1000,cancel.Token);
             }
+            cancel.Token.ThrowIfCancellationRequested();
             return true;
         } catch(OperationCanceledException) { return false; }
+        catch(Exception ex) { Status.Text="Odpočet se nepodařilo spustit: "+ex.Message;return false; }
         finally {
+            overlay?.Dismiss();
             if(ReferenceEquals(countdown,cancel))countdown=null;
             cancel.Dispose();StartButton.IsEnabled=true;DemoButton.IsEnabled=true;SetupPanel.IsEnabled=true;
             if(!riding)StopButton.Visibility=Visibility.Collapsed;
@@ -448,4 +457,8 @@ public partial class MainWindow : Window
         Status.Text="Pro změnu trasy se nejprve odpoj ze společné jízdy.";
         return true;
     }
-}
+    static void PlayCountdownSound(bool start)
+    {
+        try { if(start)System.Media.SystemSounds.Asterisk.Play();else System.Media.SystemSounds.Beep.Play(); }
+        catch(Exception) { /* Odpočet funguje i bez dostupného zvukového zařízení. */ }
+    }}

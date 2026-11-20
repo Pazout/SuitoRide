@@ -19,7 +19,7 @@ Zdrojový projekt lze sestavit příkazem dotnet build -c Release. Během jízdy
 
 Tlačítko Upravit trasu umožňuje přetažením značek na výškovém profilu nebo pomocí posuvníků vybrat začátek a cíl a obrátit směr vybraného úseku. Po potvrzení lze výsledek uložit do nového GPX souboru. Export obsahuje souřadnice a nadmořskou výšku trasy; ostatní údaje a rozšíření původního GPX nepřenáší. Bez uložení platí změna jen pro aktuální načtenou trasu.
 
-Před skutečnou i ukázkovou jízdou běží pětisekundový odpočet, který lze přerušit tlačítkem Zastavit.
+Před skutečnou i ukázkovou jízdou běží desetisekundový poloprůhledný celoobrazovkový odpočet se zvukovým upozorněním, který lze zrušit tlačítkem nebo klávesou Escape.
 
 ## Společná jízda
 
