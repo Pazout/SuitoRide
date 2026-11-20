@@ -1,4 +1,4 @@
-<Window x:Class="SuitoRide.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:wv="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf" Title="Suito Ride" Height="820" Width="1200" MinWidth="780" MinHeight="580" Background="#101b25" Foreground="#eaf1f5">
+<Window x:Class="SuitoRide.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:wv="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf" Icon="Assets/SuitoRide.ico" Title="Suito Ride" Height="820" Width="1200" MinWidth="780" MinHeight="580" Background="#101b25" Foreground="#eaf1f5">
   <Window.Resources>
     <Style TargetType="Button"><Setter Property="Padding" Value="14,9"/><Setter Property="Margin" Value="0,0,10,6"/><Setter Property="Background" Value="#16816e"/><Setter Property="Foreground" Value="White"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/></Style>
     <Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/></Style>
@@ -13,14 +13,22 @@
         <WrapPanel><Button Content="Načíst GPX" Click="LoadRoute"/><Button Content="Vyhledat trenažér" Click="Scan"/><ComboBox x:Name="Devices" DisplayMemberPath="Name" Width="220" Margin="0,0,10,6"/><Button Content="Připojit vybraný" Click="Connect"/><Button Content="Odpojit" Click="Disconnect"/></WrapPanel>
         <TextBlock x:Name="RouteName" Text="Zatím není načtená žádná trasa" FontSize="18" FontWeight="SemiBold"/>
         <TextBlock x:Name="RouteInfo" Foreground="#99b2bf" Margin="0,2,0,6"/>
-        <WrapPanel><Button Content="Zobrazit celou trasu" Click="FitMap"/><Button Content="Sledovat jezdce" Click="FollowRider"/><Button Content="Street View v prohlížeči" Click="OpenStreetView"/><CheckBox x:Name="RotateMap" Content="Mapa ve směru jízdy" Foreground="White" VerticalAlignment="Center" Margin="0,0,10,6" Checked="SetMapRotation" Unchecked="SetMapRotation"/></WrapPanel>
+        <WrapPanel><Button Content="Street View v prohlížeči" Click="OpenStreetView"/></WrapPanel>
         <TextBlock Text="PANORAMA" FontWeight="SemiBold" Margin="0,4,0,4"/>
         <WrapPanel><ComboBox x:Name="PanoramaProvider" Width="190" Height="34" SelectedIndex="0" SelectionChanged="PanoramaProviderChanged" Margin="0,0,10,6"><ComboBoxItem Content="Mapy.com"/><ComboBoxItem Content="Google Street View"/></ComboBox><PasswordBox x:Name="GoogleKey" Width="240" Height="34" Margin="0,0,10,6"/><Button Content="Zapnout panorama" Click="EnableStreetView"/><Button Content="Vypnout panorama" Click="DisableStreetView"/><Button Content="Odstranit uložený klíč" Click="ForgetPanoramaKey"/></WrapPanel>
         <TextBlock x:Name="KeyStatus" Foreground="#99b2bf" Margin="0,0,0,3"/><TextBlock x:Name="StreetStatus" Foreground="#99b2bf" Margin="0,0,0,3"/>
         <TextBlock x:Name="MapStatus" Text="Načítám mapu…" Foreground="#99b2bf" Margin="0,0,0,4"/>
       </StackPanel>
     </ScrollViewer>
-    <wv:WebView2 x:Name="MapView" Grid.Row="1" MinHeight="120" Margin="0,0,0,8"/>
+    <Grid Grid.Row="1">
+      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+      <WrapPanel x:Name="MapControls" Grid.Row="0">
+        <Button Content="Zobrazit celou trasu" Click="FitMap"/>
+        <Button Content="Sledovat jezdce" Click="FollowRider"/>
+        <CheckBox x:Name="RotateMap" Content="Mapa ve směru jízdy" Foreground="White" VerticalAlignment="Center" Margin="0,0,10,6" Checked="SetMapRotation" Unchecked="SetMapRotation"/>
+      </WrapPanel>
+      <wv:WebView2 x:Name="MapView" Grid.Row="1" MinHeight="120" Margin="0,0,0,8"/>
+    </Grid>
     <Grid Grid.Row="2">
       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
       <Canvas x:Name="Profile" Grid.Row="0" Height="110" Background="#1c2c38" SizeChanged="DrawProfile" ClipToBounds="True"/>

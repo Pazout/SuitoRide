@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>Assets\SuitoRide.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,4 +14,5 @@
   </ItemGroup>
 
   <ItemGroup><Content Include="map\**"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content></ItemGroup>
+  <ItemGroup><Resource Include="Assets\SuitoRide.ico" /></ItemGroup>
 </Project>
