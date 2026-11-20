@@ -20,3 +20,15 @@ Zdrojový projekt lze sestavit příkazem dotnet build -c Release. Během jízdy
 Tlačítko Upravit trasu umožňuje přetažením značek na výškovém profilu nebo pomocí posuvníků vybrat začátek a cíl a obrátit směr vybraného úseku. Po potvrzení lze výsledek uložit do nového GPX souboru. Export obsahuje souřadnice a nadmořskou výšku trasy; ostatní údaje a rozšíření původního GPX nepřenáší. Bez uložení platí změna jen pro aktuální načtenou trasu.
 
 Před skutečnou i ukázkovou jízdou běží pětisekundový odpočet, který lze přerušit tlačítkem Zastavit.
+
+## Společná jízda
+
+Oba jezdci potřebují tuto verzi aplikace a stejný soubor GPX (včetně směru a vybraného úseku). Každý ovládá svůj trenažér a zahajuje jízdu zvlášť; nejde o synchronizovaný start ani o sdílení panoramatu. Poloha a stav druhého jezdce se zobrazují na mapě.
+
+Pro propojení přes internet bez změn routeru lze použít společnou virtuální soukromou síť, například Tailscale. Hostitel vytvoří v aplikaci společnou místnost; aplikace spustí přiložený server na portu TCP 5077. Kamarád zadá adresu hostitelova počítače ve VPN ve tvaru http://100.x.y.z:5077 a kód místnosti. Oba musí mít ve VPN povolené vzájemné spojení. Příchozí spojení může být nutné povolit ve firewallu Windows pro používané síťové rozhraní. Po dobu jízdy musí běžet aplikace hostitele i jeho počítač. Kód místnosti funguje jako přístupové heslo; sdílej ho pouze s účastníky.
+
+Pro test použijte stejný GPX, připojte se do místnosti a na obou počítačích spusťte ukázkovou jízdu. Odpojení odstraní značku jezdce; při výpadku spojení je nutné se připojit znovu. Původní GPX ani data z trenažéru se nepřenášejí; přenáší se jméno, ujetá vzdálenost a stav jízdy. Server neukládá historii.
+
+Server lze alternativně spustit samostatně z projektu SpolecnaJizda.Server. Server vystavený do veřejného internetu musí používat HTTPS, například prostřednictvím reverzní proxy. Tlačítko Vytvořit místnost spouští místní server hostitele; na samostatném serveru založíš místnost tlačítkem Vytvořit na serveru po zadání jeho adresy. Bezpečné nasazení, dostupnost portů a ověření sítě zajišťuje provozovatel.
+
+Pro vlastní sestavení balíčku spusť ve složce projektu `dotnet build -c Release -o .\spolecna-jizda` a potom `dotnet publish SpolecnaJizda.Server\SpolecnaJizda.Server.csproj -c Release -r win-x64 --self-contained true -o .\spolecna-jizda\server`. Kamarád potřebuje celou složku se sestavením a nainstalovaný .NET 10 Desktop Runtime; server hostitele má přibalené vlastní běhové prostředí.

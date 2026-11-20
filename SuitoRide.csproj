@@ -10,9 +10,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.15" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" />
   </ItemGroup>
 
   <ItemGroup><Content Include="map\**"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content></ItemGroup>
   <ItemGroup><Resource Include="Assets\SuitoRide.ico" /></ItemGroup>
+  <ItemGroup><Compile Remove="SpolecnaJizda.Server\**\*.cs" /><None Remove="SpolecnaJizda.Server\**" /><Content Remove="SpolecnaJizda.Server\**" /></ItemGroup>
 </Project>

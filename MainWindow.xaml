@@ -56,7 +56,7 @@
       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
       <WrapPanel x:Name="MapControls" Grid.Row="0">
         <Button Content="Zobrazit celou trasu" Click="FitMap"/>
-        <Button Content="Sledovat jezdce" Click="FollowRider"/>
+        <Button Content="Sledovat jezdce" Click="FollowRider"/><Button Content="Společná jízda" Click="OpenSharedRide"/>
         <CheckBox x:Name="RotateMap" Content="Mapa ve směru jízdy" Foreground="White" VerticalAlignment="Center" Margin="0,0,6,4" Checked="SetMapRotation" Unchecked="SetMapRotation"/>
       </WrapPanel>
       <wv:WebView2 x:Name="MapView" Grid.Row="1" MinHeight="100" Margin="0,0,0,6"/>

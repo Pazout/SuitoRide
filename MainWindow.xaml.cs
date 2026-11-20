@@ -28,7 +28,7 @@ public partial class MainWindow : Window
     double distance,speed,lastGrade=double.NaN;
     DateTime lastData=DateTime.MinValue,lastTick;
     bool riding,demo,ticking;
-    public MainWindow(){InitializeComponent();timer.Tick+=Tick;Closing+=HandleClosing;Loaded+=(_,_)=>{InitMap();RestoreCatalog();UpdateKeyStatus();AutoStartPanorama();};Closed+=(_,_)=>{watcher?.Stop();DisconnectCore();};}
+    public MainWindow(){InitializeComponent();timer.Tick+=Tick;Closing+=HandleClosing;Loaded+=(_,_)=>{InitMap();RestoreCatalog();UpdateKeyStatus();AutoStartPanorama();};Closed+=(_,_)=>{sharedRide?.Shutdown();watcher?.Stop();DisconnectCore();};}
     void LoadRoute(object s,RoutedEventArgs e)
     {
         if(riding||ticking){Status.Text="Nejprve zastavte jízdu.";return;}
@@ -38,6 +38,7 @@ public partial class MainWindow : Window
     }
     void LoadRouteFile(string path)
     {
+        if(SharedRouteLocked())return;
         try {
             var doc=XDocument.Load(path);
             var seg=doc.Descendants().Where(x=>x.Name.LocalName=="trkseg").ToList();
@@ -149,7 +150,7 @@ public partial class MainWindow : Window
             MapView.CoreWebView2.SetVirtualHostNameToFolderMapping("suitoride.local",System.IO.Path.Combine(AppContext.BaseDirectory,"map"),Microsoft.Web.WebView2.Core.CoreWebView2HostResourceAccessKind.Allow);
             MapView.CoreWebView2.Settings.AreDefaultContextMenusEnabled=false;
             MapView.CoreWebView2.WebMessageReceived+=(_,e)=>{
-                if(e.TryGetWebMessageAsString()=="ready"){mapReady=true;MapStatus.Text="Mapa: OpenStreetMap. Poloha vychází z ujeté vzdálenosti.";SendRoute();SendMap(new{type="rotate",enabled=RotateMap.IsChecked==true});SendMap(new{type="ride-layout",active=riding});UpdateStreetView(true);}
+                if(e.TryGetWebMessageAsString()=="ready"){mapReady=true;MapStatus.Text="Mapa: OpenStreetMap. Poloha vychází z ujeté vzdálenosti.";SendRoute();SendMap(new{type="rotate",enabled=RotateMap.IsChecked==true});SendMap(new{type="ride-layout",active=riding});foreach(var other in otherRiders.Values.ToArray())ShowOtherRider(other);UpdateStreetView(true);}
             };
             MapView.CoreWebView2.NavigationCompleted+=(_,e)=>{if(!e.IsSuccess)MapStatus.Text="Mapu se nepodařilo načíst. Zkontrolujte připojení a WebView2 Runtime.";};
             MapView.CoreWebView2.NewWindowRequested+=(_,e)=>{e.Handled=true;try{System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(e.Uri){UseShellExecute=true});}catch{}};
@@ -159,7 +160,7 @@ public partial class MainWindow : Window
     void SendMap(object message){if(mapReady) MapView.CoreWebView2.PostWebMessageAsJson(System.Text.Json.JsonSerializer.Serialize(message));}
     void SendRoute(){if(route.Count<2)return;SendMap(new{type="route",points=route.Select(p=>new[]{p.Lat,p.Lon})});SendPosition();}
     (double Lat,double Lon) Position()=>PositionAt(distance);
-    void SendPosition(){if(route.Count<2)return;var p=Position();SendMap(new{type="position",lat=p.Lat,lon=p.Lon,heading=Heading()});UpdateStreetView();}
+    void SendPosition(){if(route.Count<2)return;var p=Position();SendMap(new{type="position",lat=p.Lat,lon=p.Lon,heading=Heading()});sharedRide?.Publish(distance,riding);UpdateStreetView();}
     void FitMap(object s,RoutedEventArgs e)=>SendMap(new{type="fit"});
     void FollowRider(object s,RoutedEventArgs e)=>SendMap(new{type="follow"});
     void OpenStreetView(object s,RoutedEventArgs e)
@@ -294,6 +295,7 @@ public partial class MainWindow : Window
     {
         SetupPanel.Visibility=active?Visibility.Collapsed:Visibility.Visible;
         SendMap(new{type="ride-layout",active});
+        sharedRide?.Publish(distance,active);
         StartButton.Visibility=active?Visibility.Collapsed:Visibility.Visible;
         DemoButton.Visibility=active?Visibility.Collapsed:Visibility.Visible;
         StopButton.Visibility=active?Visibility.Visible:Visibility.Collapsed;
@@ -359,6 +361,7 @@ public partial class MainWindow : Window
     {
         if(riding||ticking){Status.Text="Nejprve zastavte jízdu.";return;}
         if(route.Count<2){Status.Text="Nejprve načtěte GPX trasu.";return;}
+        if(SharedRouteLocked())return;
         var dialog=new RouteEditWindow(route[^1].D,route.Select(p=>(p.D,p.Ele)).ToList()){Owner=this};
         if(dialog.ShowDialog()!=true)return;
         try {
@@ -410,4 +413,39 @@ public partial class MainWindow : Window
                     new XElement(ns+"trkseg",route.Select(p=>new XElement(ns+"trkpt",
                         new XAttribute("lat",p.Lat),new XAttribute("lon",p.Lon),new XElement(ns+"ele",p.Ele)))))));
         doc.Save(path);
-    }}
+    }
+    SharedRideWindow? sharedRide;
+    string? sharedRouteHash;
+    readonly Dictionary<string,SharedRider> otherRiders=[];
+    string RouteFingerprint()
+    {
+        var text=string.Join(";",route.Select(p=>FormattableString.Invariant($"{p.Lat:R},{p.Lon:R},{p.Ele:R}")));
+        return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(text)));
+    }
+    void OpenSharedRide(object s,RoutedEventArgs e)
+    {
+        if(route.Count<2){Status.Text="Nejprve načti GPX trasu pro společnou jízdu.";return;}
+        var hash=RouteFingerprint();
+        if(sharedRide!=null && sharedRouteHash!=hash){sharedRide.Shutdown();sharedRide=null;}
+        if(sharedRide==null){
+            sharedRouteHash=hash;
+            sharedRide=new SharedRideWindow(hash,ShowOtherRider,RemoveOtherRider,ClearOtherRiders,()=>sharedRide?.Publish(distance,riding)){Owner=this};
+        }
+        if(!sharedRide.IsVisible)sharedRide.Show();else sharedRide.Activate();
+    }
+    void ShowOtherRider(SharedRider other)
+    {
+        if(route.Count<2 || !double.IsFinite(other.Distance))return;
+        otherRiders[other.Id]=other;
+        var p=PositionAt(Math.Clamp(other.Distance,0,route[^1].D));
+        SendMap(new{type="peer",id=other.Id,name=other.Name,lat=p.Lat,lon=p.Lon,riding=other.Riding});
+    }
+    void RemoveOtherRider(string id){otherRiders.Remove(id);SendMap(new{type="peer-left",id});}
+    void ClearOtherRiders(){otherRiders.Clear();SendMap(new{type="peer-clear"});}
+    bool SharedRouteLocked()
+    {
+        if(sharedRide?.IsBusy!=true)return false;
+        Status.Text="Pro změnu trasy se nejprve odpoj ze společné jízdy.";
+        return true;
+    }
+}

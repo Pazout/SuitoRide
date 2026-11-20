@@ -12,6 +12,7 @@ else{
  const map=L.map('map',{rotate:true,rotateControl:false,touchRotate:false,shiftKeyRotate:false}).setView([49.8,15.5],7);
  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> přispěvatelé'}).addTo(map);
  let line=null,rider=null,follow=false,rotate=false,heading=0;
+ const peers=new Map();
  const notice=document.getElementById('notice'),pano=document.getElementById('pano'),panowrap=document.getElementById('panowrap'),panoerror=document.getElementById('panoerror');
  let imageGeneration=0, activeImage=null;
  function clearImages(){imageGeneration++;panowrap.querySelectorAll('.panoimg').forEach(img=>img.remove());activeImage=null;}
@@ -45,6 +46,14 @@ else{
    heading=m.heading;rider.setLatLng([m.lat,m.lon]);applyHeading();if(follow)map.panTo([m.lat,m.lon],{animate:false});
   }else if(m.type==='fit'&&line){follow=false;map.setBearing(0);map.fitBounds(line.getBounds(),{padding:[25,25],maxZoom:16});applyHeading();}
   else if(m.type==='follow'&&rider){follow=true;map.setView(rider.getLatLng(),Math.max(map.getZoom(),15));}
+  else if(m.type==='peer'){
+   let marker=peers.get(m.id);
+   if(!marker){marker=L.circleMarker([m.lat,m.lon],{radius:8,color:'#ffffff',weight:2,fillColor:'#e25a75',fillOpacity:1}).addTo(map);peers.set(m.id,marker);}
+   marker.setLatLng([m.lat,m.lon]);
+   const text=document.createElement('span');text.textContent=m.name+(m.riding?' · jede':' · čeká');
+   marker.unbindTooltip();marker.bindTooltip(text,{permanent:true,direction:'top',offset:[0,-8]});
+  }else if(m.type==='peer-left'){const marker=peers.get(m.id);if(marker){map.removeLayer(marker);peers.delete(m.id);}}
+  else if(m.type==='peer-clear'){for(const marker of peers.values())map.removeLayer(marker);peers.clear();}
   else if(m.type==='rotate'){rotate=m.enabled;applyHeading();}
   else if(m.type==='ride-layout'){document.getElementById('layout').classList.toggle('ride',m.active);requestAnimationFrame(()=>map.invalidateSize());}
   else if(m.type==='streetview'){
