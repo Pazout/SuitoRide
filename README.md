@@ -17,6 +17,6 @@ Alternativně lze zvolit Google Street View a zadat Google Maps Embed API klíč
 Zdrojový projekt lze sestavit příkazem dotnet build -c Release. Během jízdy panorama vyplní většinu mapového panelu a mapa se zobrazí menší. Aplikace vyžaduje internet a Microsoft Edge WebView2 Runtime.
 ## Úprava trasy a start
 
-Tlačítko Upravit trasu umožňuje vybrat počáteční a koncový kilometr a obrátit směr vybraného úseku. Po potvrzení lze výsledek uložit do nového GPX souboru. Export obsahuje souřadnice a nadmořskou výšku trasy; ostatní údaje a rozšíření původního GPX nepřenáší. Bez uložení platí změna jen pro aktuální načtenou trasu.
+Tlačítko Upravit trasu umožňuje přetažením značek na výškovém profilu nebo pomocí posuvníků vybrat začátek a cíl a obrátit směr vybraného úseku. Po potvrzení lze výsledek uložit do nového GPX souboru. Export obsahuje souřadnice a nadmořskou výšku trasy; ostatní údaje a rozšíření původního GPX nepřenáší. Bez uložení platí změna jen pro aktuální načtenou trasu.
 
 Před skutečnou i ukázkovou jízdou běží pětisekundový odpočet, který lze přerušit tlačítkem Zastavit.

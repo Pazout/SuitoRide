@@ -359,7 +359,7 @@ public partial class MainWindow : Window
     {
         if(riding||ticking){Status.Text="Nejprve zastavte jízdu.";return;}
         if(route.Count<2){Status.Text="Nejprve načtěte GPX trasu.";return;}
-        var dialog=new RouteEditWindow(route[^1].D){Owner=this};
+        var dialog=new RouteEditWindow(route[^1].D,route.Select(p=>(p.D,p.Ele)).ToList()){Owner=this};
         if(dialog.ShowDialog()!=true)return;
         try {
             var edited=CreateEditedRoute(dialog.StartMeters,dialog.EndMeters,dialog.Reverse);

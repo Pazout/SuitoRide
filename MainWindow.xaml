@@ -1,52 +1,84 @@
 <Window x:Class="SuitoRide.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:wv="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf" Icon="Assets/SuitoRide.ico" Title="Suito Ride" Height="820" Width="1200" MinWidth="780" MinHeight="580" Background="#101b25" Foreground="#eaf1f5">
   <Window.Resources>
-    <Style TargetType="Button"><Setter Property="Padding" Value="14,9"/><Setter Property="Margin" Value="0,0,10,6"/><Setter Property="Background" Value="#16816e"/><Setter Property="Foreground" Value="White"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/></Style>
-    <Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/></Style>
+    <Style TargetType="Button"><Setter Property="Padding" Value="9,5"/><Setter Property="Margin" Value="0,0,6,4"/><Setter Property="Background" Value="#16816e"/><Setter Property="Foreground" Value="White"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/></Style>
+    <Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="NoWrap"/><Setter Property="TextTrimming" Value="CharacterEllipsis"/></Style>
   </Window.Resources>
-  <Grid Margin="16">
+  <Grid Margin="12">
     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-    <ScrollViewer x:Name="SetupPanel" Grid.Row="0" MaxHeight="260" VerticalScrollBarVisibility="Auto" Margin="0,0,0,8">
-      <StackPanel>
-        <WrapPanel><TextBlock Text="SUITO RIDE" FontSize="24" FontWeight="Bold" Margin="0,0,20,8"/><Button Content="Historie tréninků" Click="ShowHistory"/><Button x:Name="RetrySaveButton" Content="Uložit čekající jízdu" Click="RetrySaveRide" Visibility="Collapsed"/></WrapPanel>
-        <WrapPanel><Button Content="Vybrat složku tras" Click="ChooseFolder"/><Button Content="Obnovit katalog" Click="RefreshCatalog"/><ComboBox x:Name="Catalog" Width="250" Margin="0,0,10,6" DisplayMemberPath="Name"/><Button Content="Načíst z katalogu" Click="LoadCatalog"/></WrapPanel>
-        <TextBlock x:Name="CatalogInfo" Foreground="#99b2bf" Margin="0,0,0,6" Text="Katalog: složka zatím není vybrána."/>
-        <WrapPanel><Button Content="Načíst GPX" Click="LoadRoute"/><Button Content="Upravit trasu" Click="EditRoute"/><Button Content="Vyhledat trenažér" Click="Scan"/><ComboBox x:Name="Devices" DisplayMemberPath="Name" Width="220" Margin="0,0,10,6"/><Button Content="Připojit vybraný" Click="Connect"/><Button Content="Odpojit" Click="Disconnect"/></WrapPanel>
-        <TextBlock x:Name="RouteName" Text="Zatím není načtená žádná trasa" FontSize="18" FontWeight="SemiBold"/>
-        <TextBlock x:Name="RouteInfo" Foreground="#99b2bf" Margin="0,2,0,6"/>
-        <WrapPanel><Button Content="Street View v prohlížeči" Click="OpenStreetView"/></WrapPanel>
-        <TextBlock Text="PANORAMA" FontWeight="SemiBold" Margin="0,4,0,4"/>
-        <WrapPanel><ComboBox x:Name="PanoramaProvider" Width="190" Height="34" SelectedIndex="0" SelectionChanged="PanoramaProviderChanged" Margin="0,0,10,6"><ComboBoxItem Content="Mapy.com"/><ComboBoxItem Content="Google Street View"/></ComboBox><PasswordBox x:Name="GoogleKey" Width="240" Height="34" Margin="0,0,10,6"/><Button Content="Zapnout panorama" Click="EnableStreetView"/><Button Content="Vypnout panorama" Click="DisableStreetView"/><Button Content="Odstranit uložený klíč" Click="ForgetPanoramaKey"/></WrapPanel>
-        <TextBlock x:Name="KeyStatus" Foreground="#99b2bf" Margin="0,0,0,3"/><TextBlock x:Name="StreetStatus" Foreground="#99b2bf" Margin="0,0,0,3"/>
-        <TextBlock x:Name="MapStatus" Text="Načítám mapu…" Foreground="#99b2bf" Margin="0,0,0,4"/>
-      </StackPanel>
-    </ScrollViewer>
+    <StackPanel x:Name="SetupPanel" Grid.Row="0" Margin="0,0,0,4">
+      <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left">
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="SUITO RIDE" FontSize="20" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,16,4"/>
+          <Button Content="Historie tréninků" Click="ShowHistory"/>
+          <Button x:Name="RetrySaveButton" Content="Uložit čekající jízdu" Click="RetrySaveRide" Visibility="Collapsed"/>
+        </StackPanel>
+      </Viewbox>
+      <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left">
+        <StackPanel Orientation="Horizontal">
+          <Button Content="Vybrat složku tras" Click="ChooseFolder"/>
+          <Button Content="Obnovit katalog" Click="RefreshCatalog"/>
+          <ComboBox x:Name="Catalog" Width="235" Margin="0,0,6,4" DisplayMemberPath="Name"/>
+          <Button Content="Načíst z katalogu" Click="LoadCatalog"/>
+          <Button Content="Načíst GPX" Click="LoadRoute"/>
+          <Button Content="Upravit trasu" Click="EditRoute"/>
+        </StackPanel>
+      </Viewbox>
+      <Grid Margin="0,0,0,3">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+        <TextBlock x:Name="CatalogInfo" Grid.Column="0" Foreground="#99b2bf" Text="Katalog: složka zatím není vybrána." ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+        <TextBlock x:Name="RouteInfo" Grid.Column="1" Foreground="#99b2bf" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+      </Grid>
+      <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left">
+        <StackPanel Orientation="Horizontal">
+          <Button Content="Vyhledat trenažér" Click="Scan"/>
+          <ComboBox x:Name="Devices" DisplayMemberPath="Name" Width="210" Margin="0,0,6,4"/>
+          <Button Content="Připojit vybraný" Click="Connect"/>
+          <Button Content="Odpojit" Click="Disconnect"/>
+          <TextBlock x:Name="RouteName" Text="Zatím není načtená žádná trasa" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,4" MaxWidth="300" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+        </StackPanel>
+      </Viewbox>
+      <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left">
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="PANORAMA" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,4"/>
+          <ComboBox x:Name="PanoramaProvider" Width="145" SelectedIndex="0" SelectionChanged="PanoramaProviderChanged" Margin="0,0,6,4"><ComboBoxItem Content="Mapy.com"/><ComboBoxItem Content="Google Street View"/></ComboBox>
+          <PasswordBox x:Name="GoogleKey" Width="145" Margin="0,0,6,4" ToolTip="API klíč panoramatu"/>
+          <Button Content="Zapnout" Click="EnableStreetView"/><Button Content="Vypnout" Click="DisableStreetView"/><Button Content="Odstranit klíč" Click="ForgetPanoramaKey"/><Button Content="Street View v prohlížeči" Click="OpenStreetView"/>
+        </StackPanel>
+      </Viewbox>
+      <Grid Margin="0,0,0,4">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+        <TextBlock x:Name="KeyStatus" Grid.Column="0" Foreground="#99b2bf" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+        <TextBlock x:Name="StreetStatus" Grid.Column="1" Foreground="#99b2bf" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+        <TextBlock x:Name="MapStatus" Grid.Column="2" Text="Načítám mapu…" Foreground="#99b2bf" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+      </Grid>
+    </StackPanel>
     <Grid Grid.Row="1">
       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
       <WrapPanel x:Name="MapControls" Grid.Row="0">
         <Button Content="Zobrazit celou trasu" Click="FitMap"/>
         <Button Content="Sledovat jezdce" Click="FollowRider"/>
-        <CheckBox x:Name="RotateMap" Content="Mapa ve směru jízdy" Foreground="White" VerticalAlignment="Center" Margin="0,0,10,6" Checked="SetMapRotation" Unchecked="SetMapRotation"/>
+        <CheckBox x:Name="RotateMap" Content="Mapa ve směru jízdy" Foreground="White" VerticalAlignment="Center" Margin="0,0,6,4" Checked="SetMapRotation" Unchecked="SetMapRotation"/>
       </WrapPanel>
-      <wv:WebView2 x:Name="MapView" Grid.Row="1" MinHeight="120" Margin="0,0,0,8"/>
+      <wv:WebView2 x:Name="MapView" Grid.Row="1" MinHeight="100" Margin="0,0,0,6"/>
     </Grid>
     <Grid Grid.Row="2">
       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-      <Canvas x:Name="Profile" Grid.Row="0" Height="110" Background="#1c2c38" SizeChanged="DrawProfile" ClipToBounds="True"/>
-      <ProgressBar x:Name="Progress" Grid.Row="1" Height="7" Margin="0,5,0,8" Maximum="100"/>
+      <Canvas x:Name="Profile" Grid.Row="0" Height="85" Background="#1c2c38" SizeChanged="DrawProfile" ClipToBounds="True"/>
+      <ProgressBar x:Name="Progress" Grid.Row="1" Height="6" Margin="0,4,0,6" Maximum="100"/>
     </Grid>
     <Grid Grid.Row="3">
       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
       <StackPanel Grid.Column="0">
         <UniformGrid Columns="4">
-          <StackPanel><TextBlock Text="VÝKON" Foreground="#99b2bf"/><TextBlock x:Name="Power" Text="— W" FontSize="22"/></StackPanel>
-          <StackPanel><TextBlock Text="RYCHLOST" Foreground="#99b2bf"/><TextBlock x:Name="Speed" Text="— km/h" FontSize="22"/></StackPanel>
-          <StackPanel><TextBlock Text="KADENCE" Foreground="#99b2bf"/><TextBlock x:Name="Cadence" Text="— ot/min" FontSize="22"/></StackPanel>
-          <StackPanel><TextBlock Text="SKLON" Foreground="#99b2bf"/><TextBlock x:Name="Grade" Text="— %" FontSize="22"/></StackPanel>
+          <StackPanel><TextBlock Text="VÝKON" Foreground="#99b2bf"/><TextBlock x:Name="Power" Text="— W" FontSize="20"/></StackPanel>
+          <StackPanel><TextBlock Text="RYCHLOST" Foreground="#99b2bf"/><TextBlock x:Name="Speed" Text="— km/h" FontSize="20"/></StackPanel>
+          <StackPanel><TextBlock Text="KADENCE" Foreground="#99b2bf"/><TextBlock x:Name="Cadence" Text="— ot/min" FontSize="20"/></StackPanel>
+          <StackPanel><TextBlock Text="SKLON" Foreground="#99b2bf"/><TextBlock x:Name="Grade" Text="— %" FontSize="20"/></StackPanel>
         </UniformGrid>
-        <TextBlock x:Name="RideInfo" Text="Pro skutečnou jízdu připojte trenažér." Foreground="#99b2bf" Margin="0,3,0,0"/>
-        <TextBlock x:Name="Status" Text="Načtěte trasu a vyhledejte trenažér." Foreground="#9ed4c7"/>
+        <TextBlock x:Name="RideInfo" Text="Pro skutečnou jízdu připojte trenažér." Foreground="#99b2bf" Margin="0,2,0,0" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+        <TextBlock x:Name="Status" Text="Načtěte trasu a vyhledejte trenažér." Foreground="#9ed4c7" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
       </StackPanel>
-      <WrapPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0"><Button x:Name="StartButton" Content="Zahájit jízdu" Click="StartRide"/><Button x:Name="DemoButton" Content="Ukázková jízda" Click="StartDemo"/><Button x:Name="StopButton" Content="Zastavit" Click="StopRide" Visibility="Collapsed"/></WrapPanel>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0"><Button x:Name="StartButton" Content="Zahájit jízdu" Click="StartRide"/><Button x:Name="DemoButton" Content="Ukázková jízda" Click="StartDemo"/><Button x:Name="StopButton" Content="Zastavit" Click="StopRide" Visibility="Collapsed"/></StackPanel>
     </Grid>
   </Grid>
 </Window>
