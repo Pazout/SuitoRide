@@ -1,6 +1,6 @@
 <Window x:Class="SuitoRide.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:wv="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf" Icon="Assets/SuitoRide.ico" Title="Suito Ride" Height="820" Width="1200" MinWidth="780" MinHeight="580" Background="#101b25" Foreground="#eaf1f5">
   <Window.Resources>
-    <Style TargetType="Button"><Setter Property="Padding" Value="9,5"/><Setter Property="Margin" Value="0,0,6,4"/><Setter Property="Background" Value="#16816e"/><Setter Property="Foreground" Value="White"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/></Style>
+    <Style TargetType="Button" BasedOn="{StaticResource HighContrastButton}"><Setter Property="Padding" Value="9,5"/><Setter Property="Margin" Value="0,0,6,4"/></Style>
     <Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="NoWrap"/><Setter Property="TextTrimming" Value="CharacterEllipsis"/></Style>
   </Window.Resources>
   <Grid Margin="12">
@@ -10,6 +10,7 @@
         <StackPanel Orientation="Horizontal">
           <TextBlock Text="SUITO RIDE" FontSize="20" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,16,4"/>
           <Button Content="Historie tréninků" Click="ShowHistory"/>
+          <Button Content="Cache a panorama" Click="ShowMapSettings"/>
           <Button x:Name="RetrySaveButton" Content="Uložit čekající jízdu" Click="RetrySaveRide" Visibility="Collapsed"/>
         </StackPanel>
       </Viewbox>
@@ -17,7 +18,16 @@
         <StackPanel Orientation="Horizontal">
           <Button Content="Vybrat složku tras" Click="ChooseFolder"/>
           <Button Content="Obnovit katalog" Click="RefreshCatalog"/>
-          <ComboBox x:Name="Catalog" Width="235" Margin="0,0,6,4" DisplayMemberPath="Name"/>
+          <ComboBox x:Name="Catalog" Width="300" Margin="0,0,6,4" HorizontalContentAlignment="Stretch">
+            <ComboBox.ItemTemplate>
+              <DataTemplate>
+                <DockPanel ToolTip="{Binding File.Name}">
+                  <TextBlock DockPanel.Dock="Right" Text="{Binding CountLabel}" FontWeight="SemiBold" Margin="8,0,4,0" ToolTip="Počet dokončených jízd"/>
+                  <TextBlock Text="{Binding File.Name}"/>
+                </DockPanel>
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
           <Button Content="Načíst z katalogu" Click="LoadCatalog"/>
           <Button Content="Načíst GPX" Click="LoadRoute"/>
           <Button Content="Upravit trasu" Click="EditRoute"/>
@@ -55,30 +65,30 @@
     <Grid Grid.Row="1">
       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
       <WrapPanel x:Name="MapControls" Grid.Row="0">
-        <Button Content="Zobrazit celou trasu" Click="FitMap"/>
-        <Button Content="Sledovat jezdce" Click="FollowRider"/><Button Content="Společná jízda" Click="OpenSharedRide"/>
-        <CheckBox x:Name="RotateMap" Content="Mapa ve směru jízdy" Foreground="White" VerticalAlignment="Center" Margin="0,0,6,4" Checked="SetMapRotation" Unchecked="SetMapRotation"/>
+        <Button Content="Zobrazit celou trasu" ToolTip="Platí pro hlavní mapu" Click="FitMap"/>
+        <Button Content="Sledovat jezdce" ToolTip="Platí pro hlavní mapu" Click="FollowRider"/><Button Content="Navigační pohled" Click="ShowNavigation" ToolTip="Nakloněná mapa ve směru jízdy"/><Button Content="Panorama" Click="ShowPanorama"/><Button Content="Společná jízda" Click="OpenSharedRide"/>
+        <CheckBox x:Name="RotateMap" IsChecked="True" Content="Mapa ve směru jízdy" ToolTip="Platí pro hlavní mapu" Foreground="White" VerticalAlignment="Center" Margin="0,0,6,4" Checked="SetMapRotation" Unchecked="SetMapRotation"/>
       </WrapPanel>
       <wv:WebView2 x:Name="MapView" Grid.Row="1" MinHeight="100" Margin="0,0,0,6"/>
     </Grid>
     <Grid Grid.Row="2">
       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-      <Canvas x:Name="Profile" Grid.Row="0" Height="85" Background="#1c2c38" SizeChanged="DrawProfile" ClipToBounds="True"/>
+      <Canvas x:Name="Profile" Grid.Row="0" Height="85" Background="#1c2c38" SizeChanged="DrawProfile" ClipToBounds="True" ToolTip="Barva sklonu: tmavě modrá pod −3 %, světle modrá klesání, zelená 0–3 %, žlutá 3–6 %, oranžová 6–10 %, červená nad 10 %."/>
       <ProgressBar x:Name="Progress" Grid.Row="1" Height="6" Margin="0,4,0,6" Maximum="100"/>
     </Grid>
     <Grid Grid.Row="3">
       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
       <StackPanel Grid.Column="0">
-        <UniformGrid Columns="4">
+        <UniformGrid Columns="5">
           <StackPanel><TextBlock Text="VÝKON" Foreground="#99b2bf"/><TextBlock x:Name="Power" Text="— W" FontSize="20"/></StackPanel>
-          <StackPanel><TextBlock Text="RYCHLOST" Foreground="#99b2bf"/><TextBlock x:Name="Speed" Text="— km/h" FontSize="20"/></StackPanel>
+          <StackPanel><TextBlock Text="RYCHLOST" Foreground="#99b2bf"/><StackPanel Orientation="Horizontal"><TextBlock x:Name="Speed" Text="— km/h" FontSize="20"/><TextBlock x:Name="SpeedTrend" FontSize="19" Margin="6,0,0,0" ToolTip="Porovnání s průměrnou rychlostí jízdy"/></StackPanel></StackPanel>
           <StackPanel><TextBlock Text="KADENCE" Foreground="#99b2bf"/><TextBlock x:Name="Cadence" Text="— ot/min" FontSize="20"/></StackPanel>
-          <StackPanel><TextBlock Text="SKLON" Foreground="#99b2bf"/><TextBlock x:Name="Grade" Text="— %" FontSize="20"/></StackPanel>
+          <StackPanel><TextBlock Text="ČAS JÍZDY" Foreground="#99b2bf"/><TextBlock x:Name="Elapsed" Text="00:00:00" FontSize="20"/></StackPanel><Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left"><StackPanel><TextBlock Text="SKLON · DALŠÍCH 500 m" Foreground="#99b2bf"/><StackPanel Orientation="Horizontal"><TextBlock x:Name="Grade" Text="— %" FontSize="20" VerticalAlignment="Center"/><Canvas x:Name="ZoomProfile" Width="110" Height="44" Background="#1c2c38" Margin="8,0,0,0" ClipToBounds="True" SizeChanged="DrawProfile" ToolTip="Profil následujících 500 metrů; bílá čára označuje aktuální polohu."/></StackPanel></StackPanel></Viewbox>
         </UniformGrid>
         <TextBlock x:Name="RideInfo" Text="Pro skutečnou jízdu připojte trenažér." Foreground="#99b2bf" Margin="0,2,0,0" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
         <TextBlock x:Name="Status" Text="Načtěte trasu a vyhledejte trenažér." Foreground="#9ed4c7" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
       </StackPanel>
-      <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0"><Button x:Name="StartButton" Content="Zahájit jízdu" Click="StartRide"/><Button x:Name="DemoButton" Content="Ukázková jízda" Click="StartDemo"/><Button x:Name="StopButton" Content="Zastavit" Click="StopRide" Visibility="Collapsed"/></StackPanel>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0"><Button x:Name="StartButton" Content="▶  Zahájit jízdu" Background="#07518a" Tag="#0866a7" FontWeight="SemiBold" Click="StartRide"/><Button x:Name="DemoButton" Content="▷  Ukázková jízda" Background="#59428a" Tag="#6b51a2" FontWeight="SemiBold" Click="StartDemo"/><Button x:Name="StopButton" Content="■  Zastavit" Background="#8a2734" Tag="#a33140" FontWeight="SemiBold" Click="StopRide" Visibility="Collapsed"/></StackPanel>
     </Grid>
   </Grid>
 </Window>

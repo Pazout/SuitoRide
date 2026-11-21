@@ -37,12 +37,19 @@ internal sealed class CountdownWindow : Window
 
         var button=new Button { Content="Zrušit odpočet", Padding=new Thickness(28,14,28,14), FontSize=18,
             HorizontalAlignment=HorizontalAlignment.Center, Margin=new Thickness(0,0,0,32),
-            Background=new SolidColorBrush(Color.FromRgb(22,129,110)),Foreground=Brushes.White,BorderThickness=new Thickness(0) };
+            Style=(Style)Application.Current.FindResource("HighContrastButton") };
         button.Click+=(_,_)=>cancel();
         Grid.SetRow(button,1);layout.Children.Add(button);
         KeyDown+=(_,e)=>{if(e.Key==Key.Escape){cancel();e.Handled=true;}};
         Closing+=(_,_)=>{if(!dismissing)cancel();};
         Content=layout;
+    }
+
+    public void PlaceOnMonitor(Rect bounds)
+    {
+        WindowState=WindowState.Normal;
+        WindowStartupLocation=WindowStartupLocation.Manual;
+        Left=bounds.Left;Top=bounds.Top;Width=bounds.Width;Height=bounds.Height;
     }
 
     public void SetRemaining(int remaining) => number.Text=remaining.ToString();

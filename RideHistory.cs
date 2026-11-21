@@ -8,7 +8,7 @@ public sealed record RideSample(double ElapsedSeconds, double DistanceMeters, do
 
 public sealed record RideRecord(
     Guid Id, DateTimeOffset StartedAt, string RouteName, string Result,
-    double DurationSeconds, double DistanceMeters, double? AveragePowerWatts, IReadOnlyList<RideSample>? Samples = null)
+    double DurationSeconds, double DistanceMeters, double? AveragePowerWatts, IReadOnlyList<RideSample>? Samples = null, string? RoutePath = null)
 {
     public string DateDisplay => StartedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm");
     public string DurationDisplay => $"{(long)(DurationSeconds/3600):D2}:{(int)(DurationSeconds/60)%60:D2}:{(int)DurationSeconds%60:D2}";
@@ -22,10 +22,11 @@ internal sealed class RideSession
     readonly Stopwatch clock = Stopwatch.StartNew();
     readonly DateTimeOffset startedAt = DateTimeOffset.Now;
     readonly string routeName;
+    readonly string? routePath;
     readonly double initialDistance;
     double powerSum, powerSeconds;
     readonly List<RideSample> samples=[];
-    public RideSession(string name, double distance) { routeName=name; initialDistance=distance; }
+    public RideSession(string name, double distance, string? path = null) { routeName=name; initialDistance=distance; routePath=path; }
     public void AddPower(double watts, double seconds)
     {
         if (watts >= 0 && double.IsFinite(watts) && seconds > 0) { powerSum += watts * seconds; powerSeconds += seconds; }
@@ -38,7 +39,7 @@ internal sealed class RideSession
     {
         clock.Stop();
         return new(Guid.NewGuid(), startedAt, routeName, result, clock.Elapsed.TotalSeconds,
-            Math.Max(0,distance-initialDistance), powerSeconds > 0 ? powerSum / powerSeconds : null, samples.ToArray());
+            Math.Max(0,distance-initialDistance), powerSeconds > 0 ? powerSum / powerSeconds : null, samples.ToArray(),routePath);
     }
 }
 
