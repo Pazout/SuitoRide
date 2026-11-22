@@ -33,7 +33,63 @@ public partial class MainWindow : Window
     bool riding,demo,ticking;
     readonly Stopwatch rideClock=new();
     double rideStartDistance;
-    public MainWindow(){InitializeComponent();Title=$"Suito Ride {typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.1.0"}";timer.Tick+=Tick;Closing+=HandleClosing;Loaded+=(_,_)=>{InitMap();RestoreCatalog();RestoreLastRoute();RestorePanoramaSpacing();UpdateKeyStatus();AutoStartPanorama();};Closed+=(_,_)=>{sharedRide?.Shutdown();watcher?.Stop();DisconnectCore();};}
+    public MainWindow(){InitializeComponent();Title=$"Suito Ride {typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.1.0"}";timer.Tick+=Tick;Closing+=HandleClosing;Loaded+=(_,_)=>{InitMap();RestoreCatalog();RestoreLastRoute();RestorePanoramaSpacing();UpdateKeyStatus();AutoStartPanorama();_ = RestoreTrainerAsync();};Closed+=(_,_)=>{sharedRide?.Shutdown();watcher?.Stop();trainerConnection?.Cancel();DisconnectCore();};}
+    bool installingUpdate;
+    async void CheckForUpdates(object sender,RoutedEventArgs e)
+    {
+        if(sender is not System.Windows.Controls.Button button)return;
+        button.IsEnabled=false;
+        try
+        {
+            Status.Text="Kontroluji aktualizace na GitHubu…";
+            var current=typeof(MainWindow).Assembly.GetName().Version!;
+            string? token=AppUpdates.LoadToken();
+            AppUpdates.Update? update;
+            try { update=await AppUpdates.FindAsync(current,token); }
+            catch(AppUpdates.GitHubAccessException)
+            {
+                if(!IsLoaded)return;
+                var access=new GitHubUpdateAccessWindow {Owner=this};
+                if(access.ShowDialog()!=true){Status.Text="Kontrola soukromého vydání vyžaduje přístup ke GitHubu.";return;}
+                token=access.Token;
+                try { update=await AppUpdates.FindAsync(current,token); }
+                catch(AppUpdates.GitHubAccessException)
+                {
+                    Status.Text="GitHub vydání nezpřístupnil. Ověř platnost tokenu a oprávnění Contents: Read.";
+                    return;
+                }
+                AppUpdates.SaveToken(token);
+            }
+            if(!IsLoaded)return;
+            if(update==null){Status.Text="Používáš aktuální vydání Suito Ride.";return;}
+            if(riding||starting||pendingRide!=null){Status.Text=$"Verze {update.Version} je dostupná. Instalace je možná po jízdě.";return;}
+            if(MessageBox.Show(this,
+                $"Stáhnout, nainstalovat a spustit Suito Ride {update.Version}? Nová verze se uloží do {AppUpdates.InstallFolder}.",
+                "Aktualizace Suito Ride",MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes)
+            {
+                Status.Text=$"Verze {update.Version} je dostupná.";
+                return;
+            }
+            installingUpdate=true;
+            StartButton.IsEnabled=DemoButton.IsEnabled=false;
+            Status.Text="Stahuji a ověřuji aktualizaci…";
+            string executable=await AppUpdates.InstallAsync(update,token);
+            if(!IsLoaded)return;
+            var process=Process.Start(new ProcessStartInfo(executable)
+                {WorkingDirectory=System.IO.Path.GetDirectoryName(executable)!,UseShellExecute=true});
+            if(process==null)throw new InvalidOperationException("Novou verzi se nepodařilo spustit.");
+            process.Dispose();
+            installingUpdate=false;
+            Close();
+        }
+        catch(Exception ex){Status.Text="Aktualizace se nezdařila: "+ex.Message;}
+        finally
+        {
+            if(installingUpdate)StartButton.IsEnabled=DemoButton.IsEnabled=true;
+            installingUpdate=false;
+            button.IsEnabled=true;
+        }
+    }
     void LoadRoute(object s,RoutedEventArgs e)
     {
         if(riding||ticking){Status.Text="Nejprve zastavte jízdu.";return;}
@@ -114,7 +170,28 @@ public partial class MainWindow : Window
         SpeedTrend.Foreground=Math.Abs(delta)<0.1?Brushes.White:delta>0?Brushes.LightGreen:Brushes.Orange;
         SpeedTrend.ToolTip=$"Průměrná rychlost jízdy: {average:F1} km/h";
     }
+    CancellationTokenSource? trainerConnection;
+    string LastTrainerPath => System.IO.Path.Combine(System.IO.Path.GetDirectoryName(settingsFile)!, "last-trainer.json");
+    async Task RestoreTrainerAsync()
+    {
+        if(!File.Exists(LastTrainerPath))return;
+        try
+        {
+            var saved=System.Text.Json.JsonSerializer.Deserialize<Trainer>(File.ReadAllText(LastTrainerPath));
+            if(saved==null || saved.Address==0 || saved.Address>0xffffffffffff || string.IsNullOrWhiteSpace(saved.Name))return;
+            devices.Add(saved);
+            Devices.ItemsSource=devices;
+            Devices.SelectedItem=saved;
+            await ConnectTrainerAsync(saved,true);
+        }
+        catch(Exception ex) when(ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+        {
+            Status.Text="Poslední trenažér nelze obnovit. Můžeš ho vyhledat ručně.";
+        }
+    }
+
     void Scan(object s,RoutedEventArgs e){
+        if(trainerConnection!=null){Status.Text="Čekám na připojení trenažéru. Pokus můžeš zrušit tlačítkem Odpojit.";return;}
         watcher?.Stop();devices.Clear();Devices.ItemsSource=null;Devices.ItemsSource=devices;
         watcher=new BluetoothLEAdvertisementWatcher{ScanningMode=BluetoothLEScanningMode.Active};
         watcher.Received+=(_,a)=>{var name=a.Advertisement.LocalName;if(string.IsNullOrWhiteSpace(name))return;Dispatcher.BeginInvoke(()=>{if(devices.Any(x=>x.Address==a.BluetoothAddress))return;devices.Add(new(a.BluetoothAddress,name));Devices.Items.Refresh();});};
@@ -122,30 +199,62 @@ public partial class MainWindow : Window
     }
     async void Connect(object s,RoutedEventArgs e){
         if(Devices.SelectedItem is not Trainer selected){Status.Text="Nejprve vyberte zařízení.";return;}
+        await ConnectTrainerAsync(selected,false);
+    }
+    async Task ConnectTrainerAsync(Trainer selected,bool automatic)
+    {
+        if(trainerConnection!=null || riding || starting)return;
+        using var attempt=new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        trainerConnection=attempt;
+        var cancellation=attempt.Token;
         try{
-            watcher?.Stop();DisconnectCore();Status.Text="Připojuji trenažér…";
-            device=await BluetoothLEDevice.FromBluetoothAddressAsync(selected.Address)??throw new Exception("Zařízení není dostupné.");
+            watcher?.Stop();DisconnectCore();
+            Status.Text=automatic?$"Připojuji poslední trenažér: {selected.Name}…":"Připojuji trenažér…";
+            device=await BluetoothLEDevice.FromBluetoothAddressAsync(selected.Address).AsTask(cancellation)
+                ?? throw new Exception("Zařízení není dostupné.");
             device.ConnectionStatusChanged+=ConnectionChanged;
-            var ss=await device.GetGattServicesForUuidAsync(Guid.Parse("00001826-0000-1000-8000-00805f9b34fb"),BluetoothCacheMode.Uncached);
+            var ss=await device.GetGattServicesForUuidAsync(Guid.Parse("00001826-0000-1000-8000-00805f9b34fb"),BluetoothCacheMode.Uncached).AsTask(cancellation);
             if(ss.Status!=GattCommunicationStatus.Success||ss.Services.Count==0)throw new Exception("Zařízení nenabízí FTMS.");
-            service=ss.Services[0];var cs=await service.GetCharacteristicsAsync(BluetoothCacheMode.Uncached);
+            service=ss.Services[0];var cs=await service.GetCharacteristicsAsync(BluetoothCacheMode.Uncached).AsTask(cancellation);
             if(cs.Status!=GattCommunicationStatus.Success)throw new Exception("Službu FTMS nelze načíst.");
             data=cs.Characteristics.FirstOrDefault(c=>c.Uuid==Guid.Parse("00002ad2-0000-1000-8000-00805f9b34fb"));
             control=cs.Characteristics.FirstOrDefault(c=>c.Uuid==Guid.Parse("00002ad9-0000-1000-8000-00805f9b34fb"));
             if(data==null||control==null)throw new Exception("Chybí data nebo ovládání FTMS.");
             data.ValueChanged+=DataChanged;control.ValueChanged+=ControlChanged;
-            if(await data.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Notify)!=GattCommunicationStatus.Success||await control.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Indicate)!=GattCommunicationStatus.Success)throw new Exception("Nepodařilo se zapnout příjem dat.");
-            await Command([0]);Status.Text=$"Připojeno: {selected.Name}.";
-        }catch(Exception ex){DisconnectCore();Status.Text="Připojení selhalo: "+ex.Message;}
+            if(await data.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Notify).AsTask(cancellation)!=GattCommunicationStatus.Success||await control.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Indicate).AsTask(cancellation)!=GattCommunicationStatus.Success)throw new Exception("Nepodařilo se zapnout příjem dat.");
+            await Command([0],cancellation);
+            cancellation.ThrowIfCancellationRequested();
+            Status.Text=$"Připojeno: {selected.Name}.";
+            if(!automatic)
+            {
+                try
+                {
+                    Directory.CreateDirectory(System.IO.Path.GetDirectoryName(LastTrainerPath)!);
+                    File.WriteAllText(LastTrainerPath,System.Text.Json.JsonSerializer.Serialize(selected));
+                }
+                catch(Exception ex) when(ex is IOException or UnauthorizedAccessException)
+                {
+                    Status.Text+=" Volbu trenažéru se nepodařilo uložit.";
+                }
+            }
+        }
+        catch(Exception ex)
+        {
+            if(!IsLoaded)return;
+            DisconnectCore();
+            Status.Text=ex is OperationCanceledException?"Pokus o připojení skončil. Trenažér můžeš připojit ručně."
+                : $"Připojení trenažéru {selected.Name} selhalo: {ex.Message}";
+        }
+        finally{trainerConnection=null;}
     }
-    void ConnectionChanged(BluetoothLEDevice s,object e){if(s.ConnectionStatus==BluetoothConnectionStatus.Disconnected)Dispatcher.BeginInvoke(()=>{if(ReferenceEquals(device,s)){riding=false;timer.Stop();SetRideMode(false);Status.Text="Trenažér se odpojil. Jízda zastavena."+EndRide("Přerušeno");}});}
+    void ConnectionChanged(BluetoothLEDevice s,object e){if(s.ConnectionStatus==BluetoothConnectionStatus.Disconnected)Dispatcher.BeginInvoke(()=>{if(ReferenceEquals(device,s)&&trainerConnection==null&&(!riding||!demo)){riding=false;timer.Stop();SetRideMode(false);Status.Text="Trenažér se odpojil. Jízda zastavena."+EndRide("Přerušeno");}});}
     void ControlChanged(GattCharacteristic s,GattValueChangedEventArgs e){var b=new byte[e.CharacteristicValue.Length];DataReader.FromBuffer(e.CharacteristicValue).ReadBytes(b);reply?.TrySetResult(b);}
-    async Task Command(byte[] b){
-        await gate.WaitAsync();try{
+    async Task Command(byte[] b,CancellationToken cancellation=default){
+        await gate.WaitAsync(cancellation);try{
             if(control==null)throw new Exception("Trenažér není připojen.");
             reply=new(TaskCreationOptions.RunContinuationsAsynchronously);using var w=new DataWriter();w.WriteBytes(b);
-            if(await control.WriteValueAsync(w.DetachBuffer(),GattWriteOption.WriteWithResponse)!=GattCommunicationStatus.Success)throw new Exception("Zápis příkazu selhal.");
-            var r=await reply.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            if(await control.WriteValueAsync(w.DetachBuffer(),GattWriteOption.WriteWithResponse).AsTask(cancellation)!=GattCommunicationStatus.Success)throw new Exception("Zápis příkazu selhal.");
+            var r=await reply.Task.WaitAsync(TimeSpan.FromSeconds(5),cancellation);
             if(r.Length<3||r[0]!=0x80||r[1]!=b[0]||r[2]!=1)throw new Exception("Trenažér příkaz odmítl nebo nepodporuje.");
         }finally{reply=null;gate.Release();}
     }
@@ -160,10 +269,11 @@ public partial class MainWindow : Window
     }
     async void StartRide(object s,RoutedEventArgs e){
         if(route.Count<2){Status.Text="Nejprve načtěte GPX.";return;}
+        if(trainerConnection!=null){Status.Text="Trenažér se ještě připojuje.";return;}
         if(control==null||device?.ConnectionStatus!=BluetoothConnectionStatus.Connected){Status.Text="Nejprve připojte trenažér.";return;}
         if(riding||ticking||countdown!=null||starting)return;if(pendingRide!=null){Status.Text="Nejprve ulož čekající jízdu.";return;}starting=true;try{if(!await PrepareCountdown())return;if(control==null||device?.ConnectionStatus!=BluetoothConnectionStatus.Connected){Status.Text="Trenažér není připojen.";return;}await Command([7]);demo=false;BeginRide();}catch(Exception ex){Status.Text="Jízdu nelze spustit: "+ex.Message;}finally{starting=false;}
     }
-    async void StartDemo(object s,RoutedEventArgs e){if(route.Count<2){Status.Text="Nejprve načtěte GPX.";return;}if(riding||ticking||countdown!=null||starting)return;starting=true;try{if(!await PrepareCountdown())return;demo=true;BeginRide();}finally{starting=false;}}
+    async void StartDemo(object s,RoutedEventArgs e){if(trainerConnection!=null){Status.Text="Trenažér se ještě připojuje.";return;}if(route.Count<2){Status.Text="Nejprve načtěte GPX.";return;}if(riding||ticking||countdown!=null||starting)return;starting=true;try{if(!await PrepareCountdown())return;demo=true;BeginRide();}finally{starting=false;}}
     void BeginRide(){if(distance>=route[^1].D){distance=0;lastStreetDistance=double.NaN;UpdateStreetView(true);}lastGrade=double.NaN;lastTick=DateTime.UtcNow;rideStartDistance=distance;rideClock.Restart();UpdateRideMetrics();session=demo?null:new RideSession(RouteName.Text,distance,routeHasUnsavedEdits?null:routeSourcePath);currentPower=null;currentCadence=null;powerReceived=DateTime.MinValue;cadenceReceived=DateTime.MinValue;riding=true;SetRideMode(true);UpdateStreetView(true);timer.Start();PlayCountdownSound(true);Status.Text=demo?"Ukázková jízda: odpor se nemění.":"Jízda zahájena.";}
     async void Tick(object? s,EventArgs e){
         if(!riding||ticking)return;ticking=true;try{
@@ -183,7 +293,7 @@ public partial class MainWindow : Window
     }
     void UpdateView(){if(route.Count<2)return;Progress.Value=distance/route[^1].D*100;Grade.Text=$"{Slope():F1} %";Grade.Foreground=GradeBrush(Slope());RideInfo.Text=$"Ujeto {distance/1000:F2} z {route[^1].D/1000:F2} km"+(demo?" · ukázková jízda":"");if(demo||riding)Speed.Text=$"{speed:F1} km/h";UpdateRideMetrics();DrawProfile(null,null);SendPosition();}
     async void StopRide(object s,RoutedEventArgs e){if(countdown!=null){countdown.Cancel();Status.Text="Odpočítávání zrušeno.";return;}bool real=riding&&!demo;riding=false;timer.Stop();SetRideMode(false);Status.Text="Jízda zastavena."+EndRide("Ukončeno");if(real)try{await Command([8,1]);}catch(Exception ex){Status.Text="Jízda zastavena, trenažér nepotvrdil zastavení: "+ex.Message;}}
-    void Disconnect(object s,RoutedEventArgs e){DisconnectCore();Status.Text="Trenažér odpojen.";}
+    void Disconnect(object s,RoutedEventArgs e){if(trainerConnection!=null){trainerConnection.Cancel();return;}DisconnectCore();Status.Text="Trenažér odpojen.";}
     void DisconnectCore(){EndRide("Přerušeno");riding=false;timer.Stop();SetRideMode(false);speed=0;lastData=DateTime.MinValue;if(data!=null)data.ValueChanged-=DataChanged;if(control!=null)control.ValueChanged-=ControlChanged;if(device!=null)device.ConnectionStatusChanged-=ConnectionChanged;service?.Dispose();device?.Dispose();service=null;device=null;data=null;control=null;}
 
     bool mapReady;
@@ -482,6 +592,7 @@ public partial class MainWindow : Window
     void ShowHistory(object s,RoutedEventArgs e) => new HistoryWindow(historyStore) { Owner=this }.ShowDialog();
     void HandleClosing(object? sender,System.ComponentModel.CancelEventArgs e)
     {
+        if(installingUpdate){e.Cancel=true;return;}
         countdown?.Cancel();
         EndRide("Přerušeno");
         if(pendingRide!=null) {

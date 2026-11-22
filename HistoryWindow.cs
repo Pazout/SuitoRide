@@ -9,9 +9,10 @@ internal sealed class HistoryWindow : Window
 {
     readonly RideHistoryStore store;
     readonly StravaService strava=new();
+    readonly FitnessSyncerService fitnessSyncer=new();
     readonly DataGrid grid;
     readonly TextBlock summary,status;
-    readonly Button send,connect,forget,export;
+    readonly Button send,connect,forget,export,sendFitness,connectFitness;
     public HistoryWindow(RideHistoryStore store)
     {
         this.store=store;
@@ -26,6 +27,9 @@ internal sealed class HistoryWindow : Window
         export=new Button{Content="Uložit TCX",Padding=new Thickness(9,5,9,5),Margin=new Thickness(0,0,8,5)};
         forget=new Button{Content="Odebrat uložené spojení",Padding=new Thickness(9,5,9,5),Margin=new Thickness(0,0,8,5)};
         actions.Children.Add(connect);actions.Children.Add(send);actions.Children.Add(export);actions.Children.Add(forget);
+        connectFitness=new Button{Content="Nastavit FitnessSyncer",Padding=new Thickness(9,5,9,5),Margin=new Thickness(0,0,8,5)};
+        sendFitness=new Button{Content="Odeslat přes FitnessSyncer",Padding=new Thickness(9,5,9,5),Margin=new Thickness(0,0,8,5)};
+        actions.Children.Add(connectFitness);actions.Children.Add(sendFitness);
         DockPanel.SetDock(actions,Dock.Top);panel.Children.Add(actions);
         status=new TextBlock{TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,0,0,8)};
         DockPanel.SetDock(status,Dock.Top);panel.Children.Add(status);
@@ -48,11 +52,29 @@ internal sealed class HistoryWindow : Window
             try{strava.Forget();RefreshStatus();}catch(Exception ex){status.Text="Spojení nelze odebrat: "+ex.Message;}
         };
         send.Click+=SendRide;export.Click+=ExportRide;
+        connectFitness.Click+=(_,_)=>{new FitnessSyncerConnectWindow(fitnessSyncer){Owner=this}.ShowDialog();RefreshStatus();};
+        sendFitness.Click+=SendFitnessRide;
         RefreshStatus();
     }
-    void RefreshStatus()=>status.Text=strava.IsConnected
-        ?"Propojení se Stravou je uložené; platnost se ověří při odeslání. Soukromí aktivity se řídí nastavením Stravy."
-        :"Strava není propojená. Můžeš ji propojit nebo uložit jízdu do souboru TCX.";
+    void RefreshStatus()=>status.Text=
+        (strava.IsConnected ? "Strava připojena." : "Strava nepřipojena.") + "  " +
+        (fitnessSyncer.IsConnected ? "FitnessSyncer připojen." : "FitnessSyncer nepřipojen.");
+    async void SendFitnessRide(object sender,RoutedEventArgs e)
+    {
+        if(grid.SelectedItem is not RideRecord ride){status.Text="Nejprve vyber jízdu.";return;}
+        if(!fitnessSyncer.IsConnected){status.Text="Nejprve propoj účet přes Nastavit FitnessSyncer.";return;}
+        SetActionsEnabled(false);
+        status.Text="Odesílám vybranou jízdu do FitnessSyncer Notebooku…";
+        try
+        {
+            await fitnessSyncer.UploadAsync(ride);
+            status.Text="Jízda je ve FitnessSynceru. Do Suunto ji předá nastavená synchronizace aktivit.";
+        }
+        catch(Exception ex){status.Text="Jízdu nelze odeslat: "+ex.Message;}
+        finally{SetActionsEnabled(true);}
+    }
+    void SetActionsEnabled(bool enabled) =>
+        send.IsEnabled=connect.IsEnabled=forget.IsEnabled=export.IsEnabled=sendFitness.IsEnabled=connectFitness.IsEnabled=enabled;
     void ExportRide(object s,RoutedEventArgs e)
     {
         if(grid.SelectedItem is not RideRecord ride){status.Text="Nejprve vyber jízdu.";return;}
@@ -65,12 +87,12 @@ internal sealed class HistoryWindow : Window
     {
         if(grid.SelectedItem is not RideRecord ride){status.Text="Nejprve vyber jízdu.";return;}
         if(!strava.IsConnected){status.Text="Nejprve propoj účet Strava.";return;}
-        send.IsEnabled=connect.IsEnabled=forget.IsEnabled=export.IsEnabled=false;
+        SetActionsEnabled(false);
         status.Text="Odesílám jízdu a čekám na zpracování ve Stravě…";
         try{
             long id=await strava.SendAsync(ride,CancellationToken.None);
             status.Text=$"Jízda je na Stravě uložená (aktivita {id}).";
         }catch(Exception ex){status.Text="Jízdu nelze odeslat: "+ex.Message;}
-        finally{send.IsEnabled=connect.IsEnabled=forget.IsEnabled=export.IsEnabled=true;}
+        finally{SetActionsEnabled(true);}
     }
 }
