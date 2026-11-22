@@ -3,8 +3,11 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css">
-<style>html,body{height:100%;margin:0;background:#1c2c38}#layout{height:100%;display:flex}#mapwrap{height:100%;flex:1;min-width:200px;position:relative}#map{height:100%;width:100%}#overview{display:none;position:absolute;right:8px;top:8px;width:140px;height:105px;z-index:1000;border:2px solid white;box-shadow:0 1px 5px #333;background:#ddd}#navwrap{display:none;width:50%;min-width:200px;height:100%;position:relative;background:#1c2c38}#layout.ride #navwrap{width:75%}#navmap{width:100%;height:100%}#naverror{display:none;position:absolute;z-index:2;top:10px;left:10px;right:10px;background:#fff;color:#333;padding:8px;font:14px sans-serif}#panowrap{display:none;width:50%;min-width:200px;height:100%;position:relative;background:#1c2c38}#layout.ride #panowrap{width:75%}#pano{width:100%;height:100%;border:0;display:none}.panoimg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity 1200ms ease-in-out}.panoimg.visible{opacity:1}@media (prefers-reduced-motion:reduce){.panoimg{transition:none}}#panoerror{display:none;position:absolute;top:1em;left:1em;right:1em;color:white;font:14px sans-serif}#notice{position:absolute;z-index:1000;top:10px;left:55px;background:white;color:#333;padding:7px;border-radius:4px;font:13px sans-serif}.nav-rider,.nav-peer{width:16px;height:16px;border:3px solid white;border-radius:50%;box-shadow:0 1px 5px #333;background:#f5ba44}.nav-peer{background:#e25a75}.rider{background:#f5ba44;border:3px solid white;border-radius:50%;box-shadow:0 1px 5px #333}</style>
-</head><body><div id="layout"><div id="mapwrap"><div id="map"></div><div id="overview" title="Přehled celé trasy"></div></div><div id="navwrap"><div id="navmap"></div><div id="naverror"></div></div><div id="panowrap"><iframe id="pano" title="Street View" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe><div id="panoerror">Panorama není dostupné. Zkontrolujte klíč, připojení nebo dostupnost snímků.</div></div></div><div id="notice">Načtěte GPX trasu.</div>
+<style>html,body{height:100%;margin:0;background:#1c2c38}#layout{height:100%;display:flex}#mapwrap{height:100%;flex:1;min-width:200px;position:relative}#map{height:100%;width:100%}#overview{display:none;position:absolute;right:8px;top:8px;width:140px;height:105px;z-index:1000;border:2px solid white;box-shadow:0 1px 5px #333;background:#ddd}#navwrap{display:none;width:50%;min-width:200px;height:100%;position:relative;background:#1c2c38}#layout.ride #navwrap{width:75%}#navmap{width:100%;height:100%}#naverror{display:none;position:absolute;z-index:2;top:10px;left:10px;right:10px;background:#fff;color:#333;padding:8px;font:14px sans-serif}#panowrap{display:none;width:50%;min-width:200px;height:100%;position:relative;background:#1c2c38}#layout.ride #panowrap{width:75%}#pano{width:100%;height:100%;border:0;display:none}.panoimg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity 1200ms ease-in-out}.panoimg.visible{opacity:1}@media (prefers-reduced-motion:reduce){.panoimg{transition:none}}#panoerror{display:none;position:absolute;top:1em;left:1em;right:1em;color:white;font:14px sans-serif}#notice{position:absolute;z-index:1000;top:10px;left:55px;background:white;color:#333;padding:7px;border-radius:4px;font:13px sans-serif}.nav-rider,.nav-peer{width:16px;height:16px;border:3px solid white;border-radius:50%;box-shadow:0 1px 5px #333;background:#f5ba44}.nav-peer{background:#e25a75}.rider{background:#f5ba44;border:3px solid white;border-radius:50%;box-shadow:0 1px 5px #333}
+#google3dwrap{display:none;flex:1;min-width:0;height:100%}
+#google3dwrap iframe{display:block;width:100%;height:100%;border:0}
+</style>
+</head><body><div id="layout"><div id="mapwrap"><div id="map"></div><div id="overview" title="Přehled celé trasy"></div></div><div id="navwrap"><div id="navmap"></div><div id="naverror"></div></div><div id="google3dwrap"></div><div id="panowrap"><iframe id="pano" title="Street View" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe><div id="panoerror">Panorama není dostupné. Zkontrolujte klíč, připojení nebo dostupnost snímků.</div></div></div><div id="notice">Načtěte GPX trasu.</div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="leaflet-rotate.js"></script>
 <script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
@@ -17,6 +20,33 @@ else{
  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(overview);
  let overviewLine=null,overviewRider=null;
  let nav=null,navLoaded=false,navMode=false,panoramaVisible=false,navRoute=[],navPosition=null,navRider=null,navDisplay=null,navFrame=null;
+ const google3DOrigin='https://suitoride-3d.local';
+ const google3DWrap=document.getElementById('google3dwrap');
+ let google3DFrame=null, google3DKey=null, latestGoogle3DPosition=null, pendingMainFit=false;
+
+ function sendGoogle3D(message){
+  google3DFrame?.contentWindow.postMessage(message,google3DOrigin);
+ }
+ function openGoogle3D(key){
+  if(google3DFrame&&google3DKey===key)return;
+  closeGoogle3D();
+  google3DKey=key;
+  const frame=document.createElement('iframe');
+  frame.title='Google 3D Maps';
+  frame.referrerPolicy='strict-origin-when-cross-origin';
+  frame.addEventListener('load',()=>{
+   if(google3DFrame!==frame)return;
+   sendGoogle3D({type:'init',key,points:navRoute,position:latestGoogle3DPosition});
+  },{once:true});
+  frame.src=google3DOrigin+'/index.html';
+  google3DFrame=frame;
+  google3DWrap.append(frame);
+ }
+ function closeGoogle3D(){
+  google3DFrame?.remove();
+  google3DFrame=null;
+  google3DKey=null;
+ }
  const navDefaultZoom=16.5;
  const navZoomKey='suitoride.navigation.zoom';
  function restoreNavigationZoom(){
@@ -32,9 +62,13 @@ else{
  let navCameraPlaced=false;
  const navPeers=new Map(), navwrap=document.getElementById('navwrap'),naverror=document.getElementById('naverror');
  function refreshPanels(){
-  navwrap.style.display=navMode?'block':'none';
-  panowrap.style.display=!navMode&&panoramaVisible?'block':'none';
-  requestAnimationFrame(()=>{map.invalidateSize();updateOverview();if(nav&&navMode)nav.resize();});
+  const showingGoogle3D=google3DFrame!==null;
+  google3DWrap.style.display=showingGoogle3D?'block':'none';
+  document.getElementById('mapwrap').style.display=showingGoogle3D?'none':'block';
+  notice.style.visibility=showingGoogle3D?'hidden':'visible';
+  navwrap.style.display=navMode&&!showingGoogle3D?'block':'none';
+  panowrap.style.display=!showingGoogle3D&&!navMode&&panoramaVisible?'block':'none';
+  requestAnimationFrame(resizeActiveMap);
  }
  function initNavigation(){
   if(nav)return;
@@ -121,6 +155,13 @@ else{
   img.src=url;
  }
  const mark=L.divIcon({className:'rider',iconSize:[14,14],iconAnchor:[10,10]});
+ function resizeActiveMap(){
+  if(google3DFrame)return;
+  map.invalidateSize();
+  if(pendingMainFit){pendingMainFit=false;fitMainMap();}
+  else {applyHeading();if(follow&&rider)map.panTo(rider.getLatLng(),{animate:false});updateOverview();}
+  if(nav&&navMode)nav.resize();
+ }
  function applyHeading(){if(typeof map.setBearing==='function')map.setBearing(rotate?-heading:0);}
  function fitMainMap(){
   follow=false;
@@ -134,7 +175,7 @@ else{
  window.chrome.webview.addEventListener('message',event=>{
   const m=event.data;
   if(m.type==='route'){
-   navRoute=m.points;navPosition={lat:m.points[0][0],lon:m.points[0][1]};updateNavRoute();
+   navRoute=m.points;latestGoogle3DPosition=null;sendGoogle3D({type:'route',points:navRoute});navPosition={lat:m.points[0][0],lon:m.points[0][1]};updateNavRoute();
    if(line)map.removeLayer(line);if(rider)map.removeLayer(rider);
    line=L.polyline(m.points,{color:'#137e69',weight:5}).addTo(map);
    rider=L.marker(m.points[0],{icon:mark,title:'Jezdec'}).addTo(map);
@@ -143,9 +184,10 @@ else{
    overviewRider=L.circleMarker(m.points[0],{radius:5,color:'white',weight:2,fillColor:'#f5ba44',fillOpacity:1}).addTo(overview);
    map.setBearing(0);if(follow)map.setView(rider.getLatLng(),15);else map.fitBounds(line.getBounds(),{padding:[25,25],maxZoom:16});applyHeading();updateOverview();updateNavPosition(false);notice.style.display='none';
   }else if(m.type==='position'&&rider){
-   heading=m.heading;navPosition={lat:m.lat,lon:m.lon};updateNavPosition(true);rider.setLatLng([m.lat,m.lon]);if(overviewRider)overviewRider.setLatLng([m.lat,m.lon]);applyHeading();if(follow)map.panTo([m.lat,m.lon],{animate:false});
+   latestGoogle3DPosition=m;sendGoogle3D({type:'position',position:m});
+   heading=m.heading;navPosition={lat:m.lat,lon:m.lon};updateNavPosition(true);rider.setLatLng([m.lat,m.lon]);if(overviewRider)overviewRider.setLatLng([m.lat,m.lon]);if(!google3DFrame){applyHeading();if(follow)map.panTo([m.lat,m.lon],{animate:false});}
   }else if(m.type==='fit'&&line){fitMainMap();}
-  else if(m.type==='follow'&&rider){follow=true;updateOverview();map.setView(rider.getLatLng(),Math.max(map.getZoom(),15));}
+  else if(m.type==='follow'&&rider){pendingMainFit=false;follow=true;updateOverview();map.setView(rider.getLatLng(),Math.max(map.getZoom(),15));}
   else if(m.type==='peer'){
    let marker=peers.get(m.id);
    if(!marker){marker=L.circleMarker([m.lat,m.lon],{radius:8,color:'#ffffff',weight:2,fillColor:'#e25a75',fillOpacity:1}).addTo(map);peers.set(m.id,marker);}
@@ -155,15 +197,12 @@ else{
   }else if(m.type==='peer-left'){const marker=peers.get(m.id);if(marker){map.removeLayer(marker);peers.delete(m.id);const navPeer=navPeers.get(m.id);if(navPeer){navPeer.remove();navPeers.delete(m.id);}}}
   else if(m.type==='peer-clear'){for(const marker of peers.values())map.removeLayer(marker);peers.clear();for(const marker of navPeers.values())marker.remove();navPeers.clear();}
   else if(m.type==='rotate'){rotate=m.enabled;applyHeading();}
-  else if(m.type==='navigation-mode'){navMode=m.enabled;refreshPanels();if(navMode)initNavigation();updateNavPosition(false);}
+  else if(m.type==='navigation-mode'){closeGoogle3D();navMode=m.enabled;refreshPanels();if(navMode)initNavigation();updateNavPosition(false);}
+  else if(m.type==='google-3d-mode'){navMode=false;openGoogle3D(m.key);refreshPanels();}
   else if(m.type==='ride-layout'){
    document.getElementById('layout').classList.toggle('ride',m.active);
-   requestAnimationFrame(()=>{
-    map.invalidateSize();
-    if(m.fitMainMap)fitMainMap();
-    else updateOverview();
-    if(nav&&navMode)nav.resize();
-   });
+   if(m.fitMainMap)pendingMainFit=true;
+   requestAnimationFrame(resizeActiveMap);
   }
   else if(m.type==='streetview'){
    panoramaVisible=true;refreshPanels();panoerror.style.display='none';

@@ -6,7 +6,7 @@ using System.Windows.Shapes;
 
 namespace SuitoRide;
 
-internal sealed class RouteEditWindow : Window
+internal sealed class RouteEditWindow : SuitoDialog
 {
     readonly Slider start, end;
     readonly TextBlock description;

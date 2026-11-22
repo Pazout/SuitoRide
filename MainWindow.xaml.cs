@@ -298,6 +298,7 @@ public partial class MainWindow : Window
 
     bool mapReady;
     bool navigationMode;
+    string? activeGoogle3DKey;
     string? catalogFolder;
     readonly string settingsFile=System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"SuitoRide","catalog.txt");
     async void InitMap()
@@ -307,9 +308,12 @@ public partial class MainWindow : Window
             var webEnvironment=await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(userDataFolder:webData);
             await MapView.EnsureCoreWebView2Async(webEnvironment);
             MapView.CoreWebView2.SetVirtualHostNameToFolderMapping("suitoride.local",System.IO.Path.Combine(AppContext.BaseDirectory,"map"),Microsoft.Web.WebView2.Core.CoreWebView2HostResourceAccessKind.Allow);
+            MapView.CoreWebView2.SetVirtualHostNameToFolderMapping("suitoride-3d.local",
+                System.IO.Path.Combine(AppContext.BaseDirectory,"map","google3d"),
+                Microsoft.Web.WebView2.Core.CoreWebView2HostResourceAccessKind.DenyCors);
             MapView.CoreWebView2.Settings.AreDefaultContextMenusEnabled=false;
             MapView.CoreWebView2.WebMessageReceived+=(_,e)=>{
-                if(e.TryGetWebMessageAsString()=="ready"){mapReady=true;MapStatus.Text="Mapa: OpenStreetMap. Poloha vychází z ujeté vzdálenosti.";SendRoute();SendMap(new{type="rotate",enabled=RotateMap.IsChecked==true});SendMap(new{type="ride-layout",active=riding,fitMainMap=riding&&navigationMode});SendMap(new{type="navigation-mode",enabled=navigationMode});foreach(var other in otherRiders.Values.ToArray())ShowOtherRider(other);UpdateStreetView(true);}
+                if(e.TryGetWebMessageAsString()=="ready"){mapReady=true;MapStatus.Text="Mapa: OpenStreetMap. Poloha vychází z ujeté vzdálenosti.";SendRoute();SendMap(new{type="rotate",enabled=RotateMap.IsChecked==true});SendMap(new{type="ride-layout",active=riding,fitMainMap=riding&&navigationMode});SendViewMode();foreach(var other in otherRiders.Values.ToArray())ShowOtherRider(other);UpdateStreetView(true);}
             };
             MapView.CoreWebView2.NavigationCompleted+=(_,e)=>{if(!e.IsSuccess)MapStatus.Text="Mapu se nepodařilo načíst. Zkontrolujte připojení a WebView2 Runtime.";};
             MapView.CoreWebView2.NewWindowRequested+=(_,e)=>{e.Handled=true;try{System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(e.Uri){UseShellExecute=true});}catch{}};
@@ -319,20 +323,62 @@ public partial class MainWindow : Window
     void SendMap(object message){if(mapReady) MapView.CoreWebView2.PostWebMessageAsJson(System.Text.Json.JsonSerializer.Serialize(message));}
     void SendRoute(){if(route.Count<2)return;SendMap(new{type="route",points=route.Select(p=>new[]{p.Lat,p.Lon})});SendPosition();}
     (double Lat,double Lon) Position()=>PositionAt(distance);
-    void SendPosition(){if(route.Count<2)return;var p=Position();SendMap(new{type="position",lat=p.Lat,lon=p.Lon,heading=Heading()});sharedRide?.Publish(distance,riding);UpdateStreetView();}
+    void SendPosition(){if(route.Count<2)return;var p=Position();SendMap(new{type="position",lat=p.Lat,lon=p.Lon,heading=Heading(),altitude=Elev(distance),distance});sharedRide?.Publish(distance,riding);UpdateStreetView();}
     void FitMap(object s,RoutedEventArgs e)=>SendMap(new{type="fit"});
     void FollowRider(object s,RoutedEventArgs e)=>SendMap(new{type="follow"});
-    void ShowNavigation(object s,RoutedEventArgs e){navigationMode=true;SendMap(new{type="navigation-mode",enabled=true});}
-    void ShowPanorama(object s,RoutedEventArgs e){navigationMode=false;SendMap(new{type="navigation-mode",enabled=false});UpdateStreetView(true);}
-    void OpenStreetView(object s,RoutedEventArgs e)
+    void SendViewMode()
     {
-        if(route.Count<2){MapStatus.Text="Nejprve načtěte trasu.";return;}
-        var p=Position();
-        var url=FormattableString.Invariant($"https://www.google.com/maps/@?api=1&map_action=pano&viewpoint={p.Lat:F6}%2C{p.Lon:F6}&heading={Heading():F0}");
-        try{System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url){UseShellExecute=true});}
-        catch(Exception ex){MapStatus.Text="Panoramatický pohled nelze otevřít: "+ex.Message;}
+        if(activeGoogle3DKey!=null)
+            SendMap(new{type="google-3d-mode",key=activeGoogle3DKey});
+        else
+            SendMap(new{type="navigation-mode",enabled=navigationMode});
     }
-    void RestoreCatalog()
+    void ShowNavigation(object s,RoutedEventArgs e)
+    {
+        activeGoogle3DKey=null;
+        navigationMode=true;
+        SendViewMode();
+    }
+    void ShowPanorama(object s,RoutedEventArgs e)
+    {
+        activeGoogle3DKey=null;
+        navigationMode=false;
+        SendViewMode();
+        UpdateStreetView(true);
+    }
+    void ShowGoogle3D(object sender,RoutedEventArgs e)
+    {
+        try
+        {
+            var key=PanoramaKeyStore.Load("google3d");
+            if(string.IsNullOrWhiteSpace(key))
+            {
+                if(new Google3DKeyWindow{Owner=this}.ShowDialog()!=true)return;
+                key=PanoramaKeyStore.Load("google3d");
+                if(string.IsNullOrWhiteSpace(key))return;
+            }
+            activeGoogle3DKey=key;
+            navigationMode=true;
+            SendViewMode();
+        }
+        catch(Exception ex){Status.Text="Google 3D nelze zapnout: "+ex.Message;}
+    }
+    void ConfigureGoogle3D(object sender,RoutedEventArgs e)
+    {
+        if(new Google3DKeyWindow{Owner=this}.ShowDialog()!=true || activeGoogle3DKey==null)return;
+        try
+        {
+            var key=PanoramaKeyStore.Load("google3d");
+            if(string.IsNullOrWhiteSpace(key))ShowNavigation(sender,e);
+            else if(key!=activeGoogle3DKey)
+            {
+                activeGoogle3DKey=key;
+                SendViewMode();
+            }
+        }
+        catch(Exception ex){Status.Text="Klíč Google 3D nelze načíst: "+ex.Message;}
+    }
+void RestoreCatalog()
     {
         try{if(File.Exists(settingsFile)){catalogFolder=File.ReadAllText(settingsFile).Trim();RefreshCatalogCore();}}
         catch(Exception ex){CatalogInfo.Text="Katalog nelze načíst: "+ex.Message;}

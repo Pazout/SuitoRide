@@ -1,4 +1,4 @@
-<Window x:Class="SuitoRide.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:wv="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf" Icon="Assets/SuitoRide.ico" Title="Suito Ride" Height="820" Width="1200" MinWidth="780" MinHeight="580" Background="#101b25" Foreground="#eaf1f5">
+<Window x:Class="SuitoRide.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:wv="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf" Icon="Assets/SuitoRide.ico" Title="Suito Ride" Height="820" Width="1200" MinWidth="780" MinHeight="580" Background="{StaticResource SuitoWindowBackground}" Foreground="{StaticResource SuitoWindowForeground}">
   <Window.Resources>
     <Style TargetType="Button" BasedOn="{StaticResource HighContrastButton}"><Setter Property="Padding" Value="9,5"/><Setter Property="Margin" Value="0,0,6,4"/></Style>
     <Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="NoWrap"/><Setter Property="TextTrimming" Value="CharacterEllipsis"/></Style>
@@ -53,7 +53,7 @@
           <TextBlock Text="PANORAMA" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,4"/>
           <ComboBox x:Name="PanoramaProvider" Width="145" SelectedIndex="0" SelectionChanged="PanoramaProviderChanged" Margin="0,0,6,4"><ComboBoxItem Content="Mapy.com"/><ComboBoxItem Content="Google Street View"/></ComboBox>
           <PasswordBox x:Name="GoogleKey" Width="145" Margin="0,0,6,4" ToolTip="API klíč panoramatu"/>
-          <Button Content="Zapnout" Click="EnableStreetView"/><Button Content="Vypnout" Click="DisableStreetView"/><Button Content="Odstranit klíč" Click="ForgetPanoramaKey"/><Button Content="Street View v prohlížeči" Click="OpenStreetView"/>
+          <Button Content="Zapnout" Click="EnableStreetView"/><Button Content="Vypnout" Click="DisableStreetView"/><Button Content="Klíč Google 3D" Click="ConfigureGoogle3D"/><Button Content="Odstranit klíč" Click="ForgetPanoramaKey"/>
         </StackPanel>
       </Viewbox>
       <Grid Margin="0,0,0,4">
@@ -67,7 +67,7 @@
       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
       <WrapPanel x:Name="MapControls" Grid.Row="0">
         <Button Content="Zobrazit celou trasu" ToolTip="Platí pro hlavní mapu" Click="FitMap"/>
-        <Button Content="Sledovat jezdce" ToolTip="Platí pro hlavní mapu" Click="FollowRider"/><Button Content="Navigační pohled" Click="ShowNavigation" ToolTip="Nakloněná mapa ve směru jízdy"/><Button Content="Panorama" Click="ShowPanorama"/><Button Content="Společná jízda" Click="OpenSharedRide"/>
+        <Button Content="Sledovat jezdce" ToolTip="Platí pro hlavní mapu" Click="FollowRider"/><Button Content="Navigační pohled" Click="ShowNavigation" ToolTip="Nakloněná mapa ve směru jízdy"/><Button Content="Google 3D" Click="ShowGoogle3D" ToolTip="Letecký 3D pohled ve směru jízdy"/><Button Content="Panorama" Click="ShowPanorama"/><Button Content="Společná jízda" Click="OpenSharedRide"/>
         <CheckBox x:Name="RotateMap" IsChecked="True" Content="Mapa ve směru jízdy" ToolTip="Platí pro hlavní mapu" Foreground="White" VerticalAlignment="Center" Margin="0,0,6,4" Checked="SetMapRotation" Unchecked="SetMapRotation"/>
       </WrapPanel>
       <wv:WebView2 x:Name="MapView" Grid.Row="1" MinHeight="100" Margin="0,0,0,6"/>

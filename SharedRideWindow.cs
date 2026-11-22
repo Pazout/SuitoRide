@@ -10,7 +10,7 @@ namespace SuitoRide;
 
 public sealed record SharedRider(string Id,string Name,double Distance,bool Riding);
 
-internal sealed class SharedRideWindow : Window
+internal sealed class SharedRideWindow : SuitoDialog
 {
     readonly TextBox nameBox, addressBox, roomBox;
     readonly TextBlock stateText;

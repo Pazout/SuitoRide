@@ -5,7 +5,7 @@ using System.Windows.Controls;
 
 namespace SuitoRide;
 
-internal sealed class HistoryWindow : Window
+internal sealed class HistoryWindow : SuitoDialog
 {
     readonly RideHistoryStore store;
     readonly StravaService strava=new();

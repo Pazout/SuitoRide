@@ -4,7 +4,7 @@ using System.Windows.Controls;
 
 namespace SuitoRide;
 
-internal sealed class StravaConnectWindow : Window
+internal sealed class StravaConnectWindow : SuitoDialog
 {
     readonly StravaService service;
     readonly TextBox clientId;

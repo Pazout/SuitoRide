@@ -4,7 +4,7 @@ using System.Windows.Controls;
 
 namespace SuitoRide;
 
-internal sealed class FitnessSyncerConnectWindow : Window
+internal sealed class FitnessSyncerConnectWindow : SuitoDialog
 {
     public FitnessSyncerConnectWindow(FitnessSyncerService service)
     {

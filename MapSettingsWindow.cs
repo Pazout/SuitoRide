@@ -6,7 +6,7 @@ using Microsoft.Web.WebView2.Core;
 
 namespace SuitoRide;
 
-internal sealed class MapSettingsWindow : Window
+internal sealed class MapSettingsWindow : SuitoDialog
 {
     internal static IReadOnlyList<int> SpacingOptions { get; } = [20, 40, 60, 100];
     readonly CoreWebView2Profile? profile;

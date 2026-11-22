@@ -4,7 +4,7 @@ using System.Windows.Controls;
 
 namespace SuitoRide;
 
-internal sealed class GitHubUpdateAccessWindow : Window
+internal sealed class GitHubUpdateAccessWindow : SuitoDialog
 {
     public string Token { get; private set; } = "";
 
