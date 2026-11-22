@@ -17,10 +17,12 @@ internal static class TcxExporter
         string Number(double value)=>XmlConvert.ToString(value);
         string Time(double seconds)=>ride.StartedAt.ToUniversalTime().AddSeconds(seconds).ToString("yyyy-MM-ddTHH:mm:ss.fffZ",CultureInfo.InvariantCulture);
         var track=new XElement(tcx+"Track");
-        void AddPoint(double seconds,double distance,double? cadence,double? power,double? speed)
+        void AddPoint(double seconds,double distance,double? cadence,double? power,double? speed,int? heartRate = null)
         {
             var point=new XElement(tcx+"Trackpoint",new XElement(tcx+"Time",Time(seconds)),
                 new XElement(tcx+"DistanceMeters",Number(distance)));
+            if(heartRate is >0 and <=255)
+                point.Add(new XElement(tcx+"HeartRateBpm",new XElement(tcx+"Value",heartRate.Value)));
             if(cadence is >=0 and <=254 && double.IsFinite(cadence.Value))
                 point.Add(new XElement(tcx+"Cadence",(int)Math.Round(cadence.Value)));
             var tpx=new XElement(ext+"TPX");
@@ -36,7 +38,7 @@ internal static class TcxExporter
             if(!double.IsFinite(sample.ElapsedSeconds) || !double.IsFinite(sample.DistanceMeters))continue;
             double t=Math.Round(Math.Clamp(sample.ElapsedSeconds,0,ride.DurationSeconds),3);
             if(t<=previous || t>=ride.DurationSeconds)continue;
-            AddPoint(t,Math.Clamp(sample.DistanceMeters,0,ride.DistanceMeters),sample.CadenceRpm,sample.PowerWatts,sample.SpeedKmh);
+            AddPoint(t,Math.Clamp(sample.DistanceMeters,0,ride.DistanceMeters),sample.CadenceRpm,sample.PowerWatts,sample.SpeedKmh,sample.HeartRateBpm);
             previous=t;
         }
         AddPoint(ride.DurationSeconds,ride.DistanceMeters,null,null,null);

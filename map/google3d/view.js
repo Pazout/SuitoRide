@@ -5,7 +5,7 @@ const hostOrigin = 'https://suitoride.local';
 const statusLabel = document.getElementById('status');
 const scene = document.getElementById('scene');
 let apiKey, library, loading = false, failed = false;
-let map, marker, routeLine;
+let map, marker, routeLine, riderName = '';
 let points = [], target, displayed, frame;
 const tilt = 58;
 const range = 290;
@@ -71,7 +71,7 @@ async function ensureMap() {
         marker = new library.Marker3DElement({
             position: {lat: target.lat, lng: target.lon},
             altitudeMode: 'CLAMP_TO_GROUND',
-            label: t('Jezdec')
+            label: riderName || t('Jezdec')
         });
         scene.append(map);
         map.append(marker);
@@ -149,8 +149,12 @@ window.addEventListener('message', event => {
     const message = event.data;
     if (message.type === 'init') {
         apiKey = message.key;
+        riderName = message.riderName || '';
         points = message.points;
         if (message.position) moveTo(message.position);
+    } else if (message.type === 'rider-name') {
+        riderName = message.name;
+        if (marker) marker.label = riderName || t('Jezdec');
     } else if (message.type === 'route') {
         points = message.points;
         target = displayed = undefined;

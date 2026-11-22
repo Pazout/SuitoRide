@@ -10,7 +10,6 @@ using System.Windows.Shapes;
 using System.Windows.Threading;
 using System.Xml.Linq;
 using Windows.Devices.Bluetooth;
-using Windows.Devices.Bluetooth.Advertisement;
 using Windows.Devices.Bluetooth.GenericAttributeProfile;
 using Windows.Storage.Streams;
 
@@ -18,11 +17,10 @@ namespace SuitoRide;
 public partial class MainWindow : Window
 {
     record Pt(double Lat,double Lon,double Ele,double D);
-    record Trainer(ulong Address,string Name);
     readonly List<Pt> route=[];
-    readonly List<Trainer> devices=[];
+    BluetoothDeviceChoice? selectedTrainer;
+    BluetoothDeviceWindow? trainerDialog;
     readonly DispatcherTimer timer=new(){Interval=TimeSpan.FromSeconds(1)};
-    BluetoothLEAdvertisementWatcher? watcher;
     BluetoothLEDevice? device;
     GattDeviceService? service;
     GattCharacteristic? data, control;
@@ -33,7 +31,7 @@ public partial class MainWindow : Window
     bool riding,demo,ticking;
     readonly Stopwatch rideClock=new();
     double rideStartDistance;
-    public MainWindow(){InitializeComponent();Language=System.Windows.Markup.XmlLanguage.GetLanguage(CultureInfo.CurrentCulture.IetfLanguageTag);Title=$"Suito Ride {typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.1.0"}";timer.Tick+=Tick;Closing+=HandleClosing;Loaded+=(_,_)=>{InitMap();RestoreCatalog();RestoreLastRoute();RestorePanoramaSpacing();UpdateKeyStatus();AutoStartPanorama();_ = RestoreTrainerAsync();};Closed+=(_,_)=>{sharedRide?.Shutdown();watcher?.Stop();trainerConnection?.Cancel();DisconnectCore();};}
+    public MainWindow(){InitializeComponent();Language=System.Windows.Markup.XmlLanguage.GetLanguage(CultureInfo.CurrentCulture.IetfLanguageTag);Title=$"Suito Ride {typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.1.0"}";timer.Tick+=Tick;Closing+=HandleClosing;Loaded+=(_,_)=>{InitializeHeartRate();RestoreRiderName();InitMap();RestoreCatalog();RestoreLastRoute();RestorePanoramaSpacing();AutoStartPanorama();trainerRestoreTask=RestoreTrainerAsync();heartRateRestoreTask=RestoreHeartRateAsync();};Closed+=(_,_)=>{sharedRide?.Shutdown();trainerConnection?.Cancel();heartRateAttempt?.Cancel();DisconnectHeartRate();DisconnectCore();};}
     bool installingUpdate;
     async void CheckForUpdates(object sender,RoutedEventArgs e)
     {
@@ -119,6 +117,7 @@ public partial class MainWindow : Window
             riding=false;timer.Stop();SetRideMode(false);route.Clear();route.AddRange(points);distance=0;
             routeSourcePath=System.IO.Path.GetFullPath(path);
             routeHasUnsavedEdits=false;
+            SyncCatalogSelection();
             RouteName.Text=System.IO.Path.GetFileNameWithoutExtension(path);
             UpdateRouteInfo();
             Status.Text=UiText.Get("Trasa načtena.");
@@ -171,47 +170,97 @@ public partial class MainWindow : Window
         SpeedTrend.ToolTip=UiText.Format($"Průměrná rychlost jízdy: {average:F1} km/h");
     }
     CancellationTokenSource? trainerConnection;
+    bool trainerConnectingAutomatically, trainerRestoreSuperseded;
+    Task? trainerRestoreTask;
+    string? trainerConnectionActivity;
+
+    void SetTrainerActivity(string? activity)
+    {
+        trainerConnectionActivity=activity;
+        RefreshTrainerActivity();
+    }
+
+    void RefreshTrainerActivity() =>
+        ShowBluetoothActivity(TrainerActivity,trainerDialog?.IsSearching==true ? "Hledám trenažér…" : trainerConnectionActivity);
+
+    static void ShowBluetoothActivity(System.Windows.Controls.TextBlock indicator,string? activity)
+    {
+        indicator.Text=activity==null ? "" : UiText.Get(activity);
+        indicator.Visibility=activity==null ? Visibility.Collapsed : Visibility.Visible;
+    }
     string LastTrainerPath => System.IO.Path.Combine(System.IO.Path.GetDirectoryName(settingsFile)!, "last-trainer.json");
     async Task RestoreTrainerAsync()
     {
-        if(!File.Exists(LastTrainerPath))return;
         try
         {
-            var saved=System.Text.Json.JsonSerializer.Deserialize<Trainer>(File.ReadAllText(LastTrainerPath));
-            if(saved==null || saved.Address==0 || saved.Address>0xffffffffffff || string.IsNullOrWhiteSpace(saved.Name))return;
-            devices.Add(saved);
-            Devices.ItemsSource=devices;
-            Devices.SelectedItem=saved;
-            await ConnectTrainerAsync(saved,true);
+            selectedTrainer=BluetoothDeviceConnection.Load(LastTrainerPath);
+            if(selectedTrainer!=null)await ConnectTrainerAsync(selectedTrainer,true);
         }
         catch(Exception ex) when(ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
         {
-            Status.Text=UiText.Get("Poslední trenažér nelze obnovit. Můžeš ho vyhledat ručně.");
+            SetTrainerConnectionStatus(UiText.Get("Poslední trenažér nelze obnovit. Můžeš ho vyhledat ručně."));
         }
     }
 
-    void Scan(object s,RoutedEventArgs e){
-        if(trainerConnection!=null){Status.Text=UiText.Get("Čekám na připojení trenažéru. Pokus můžeš zrušit tlačítkem Odpojit.");return;}
-        watcher?.Stop();devices.Clear();Devices.ItemsSource=null;Devices.ItemsSource=devices;
-        watcher=new BluetoothLEAdvertisementWatcher{ScanningMode=BluetoothLEScanningMode.Active};
-        watcher.Received+=(_,a)=>{var name=a.Advertisement.LocalName;if(string.IsNullOrWhiteSpace(name))return;Dispatcher.BeginInvoke(()=>{if(devices.Any(x=>x.Address==a.BluetoothAddress))return;devices.Add(new(a.BluetoothAddress,name));Devices.Items.Refresh();});};
-        watcher.Start();Status.Text=UiText.Get("Vyhledávám Bluetooth zařízení. Zapněte Suito a vyberte ho ze seznamu.");
+    void OpenTrainer(object sender,RoutedEventArgs e)
+    {
+        if(riding||starting)return;
+        var dialog=new BluetoothDeviceWindow("Trenažér","Vyhledat trenažér",
+            "Vyhledávám Bluetooth zařízení. Zapněte Suito a vyberte ho ze seznamu.","Žádné Bluetooth zařízení nebylo nalezeno.",
+            "Vyberte trenažér ze seznamu.","Vyhledávání Bluetooth zařízení selhalo.","Připojuji trenažér…",
+            selected:selectedTrainer) { Owner=this };
+        trainerDialog=dialog;
+        dialog.UpdateConnection(control!=null,TrainerButton.ToolTip as string,trainerConnection!=null,trainerConnectingAutomatically);
+        dialog.ManualScanRequested+=CancelAutomaticTrainerConnection;
+        dialog.SearchStateChanged+=RefreshTrainerActivity;
+        dialog.ConnectRequested+=async selected=>{
+            CancelAutomaticTrainerConnection();
+            if(trainerRestoreTask is { IsCompleted:false } restore)await restore;
+            if(ReferenceEquals(trainerDialog,dialog))await ConnectTrainerAsync(selected,false);
+        };
+        dialog.DisconnectRequested+=DisconnectTrainer;
+        try { dialog.ShowDialog(); }
+        finally
+        {
+            trainerDialog=null;
+            RefreshTrainerActivity();
+        }
     }
-    async void Connect(object s,RoutedEventArgs e){
-        if(Devices.SelectedItem is not Trainer selected){Status.Text=UiText.Get("Nejprve vyberte zařízení.");return;}
-        await ConnectTrainerAsync(selected,false);
+
+    void CancelAutomaticTrainerConnection()
+    {
+        if(!trainerConnectingAutomatically)return;
+        trainerRestoreSuperseded=true;
+        SetTrainerActivity(null);
+        trainerConnection?.Cancel();
+        TrainerButton.ToolTip=null;
+        if(!riding||!demo)Status.Text=UiText.Get("Pokus o připojení skončil. Trenažér můžeš připojit ručně.");
     }
-    async Task ConnectTrainerAsync(Trainer selected,bool automatic)
+
+    void SetTrainerConnectionStatus(string message,bool connecting=false)
+    {
+        if(!riding||!demo)Status.Text=message;
+        TrainerButton.ToolTip=message;
+        trainerDialog?.UpdateConnection(control!=null,message,connecting,connecting&&trainerConnectingAutomatically);
+    }
+
+    async Task ConnectTrainerAsync(BluetoothDeviceChoice selected,bool automatic)
     {
         if(trainerConnection!=null || riding || starting)return;
-        using var attempt=new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        using var attempt=new CancellationTokenSource();
+        if(!automatic)attempt.CancelAfter(TimeSpan.FromSeconds(20));
         trainerConnection=attempt;
+        trainerConnectingAutomatically=automatic;
         var cancellation=attempt.Token;
         try{
-            watcher?.Stop();DisconnectCore();
-            Status.Text=automatic?UiText.Format($"Připojuji poslední trenažér: {selected.Name}…"):UiText.Get("Připojuji trenažér…");
-            device=await BluetoothLEDevice.FromBluetoothAddressAsync(selected.Address).AsTask(cancellation)
-                ?? throw new Exception(UiText.Get("Zařízení není dostupné."));
+            selectedTrainer=selected;
+            DisconnectCore();
+            SetTrainerConnectionStatus(automatic?UiText.Format($"Připojuji poslední trenažér: {selected.Name}…"):UiText.Get("Připojuji trenažér…"),true);
+            SetTrainerActivity(automatic ? "Hledám trenažér…" : "Připojuji trenažér…");
+            device=await BluetoothDeviceConnection.OpenAsync(selected,automatic,cancellation);
+            cancellation.ThrowIfCancellationRequested();
+            SetTrainerActivity("Připojuji trenažér…");
+            if(automatic)attempt.CancelAfter(TimeSpan.FromSeconds(20));
             device.ConnectionStatusChanged+=ConnectionChanged;
             var ss=await device.GetGattServicesForUuidAsync(Guid.Parse("00001826-0000-1000-8000-00805f9b34fb"),BluetoothCacheMode.Uncached).AsTask(cancellation);
             if(ss.Status!=GattCommunicationStatus.Success||ss.Services.Count==0)throw new Exception(UiText.Get("Zařízení nenabízí FTMS."));
@@ -224,30 +273,30 @@ public partial class MainWindow : Window
             if(await data.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Notify).AsTask(cancellation)!=GattCommunicationStatus.Success||await control.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Indicate).AsTask(cancellation)!=GattCommunicationStatus.Success)throw new Exception(UiText.Get("Nepodařilo se zapnout příjem dat."));
             await Command([0],cancellation);
             cancellation.ThrowIfCancellationRequested();
-            Status.Text=UiText.Format($"Připojeno: {selected.Name}.");
-            if(!automatic)
+            string status=UiText.Format($"Připojeno: {selected.Name}.");
+            selectedTrainer=BluetoothDeviceConnection.Identify(selected,device);
+            try { BluetoothDeviceConnection.Save(LastTrainerPath,selectedTrainer); }
+            catch(Exception ex) when(ex is IOException or UnauthorizedAccessException)
             {
-                try
-                {
-                    Directory.CreateDirectory(System.IO.Path.GetDirectoryName(LastTrainerPath)!);
-                    File.WriteAllText(LastTrainerPath,System.Text.Json.JsonSerializer.Serialize(selected));
-                }
-                catch(Exception ex) when(ex is IOException or UnauthorizedAccessException)
-                {
-                    Status.Text+=UiText.Get(" Volbu trenažéru se nepodařilo uložit.");
-                }
+                status+=UiText.Get(" Volbu trenažéru se nepodařilo uložit.");
             }
+            SetTrainerConnectionStatus(status);
         }
         catch(Exception ex)
         {
-            if(!IsLoaded)return;
-            DisconnectCore();
-            Status.Text=ex is OperationCanceledException?UiText.Get("Pokus o připojení skončil. Trenažér můžeš připojit ručně.")
-                : UiText.Format($"Připojení trenažéru {selected.Name} selhalo: {ex.Message}");
+            ReleaseTrainer();
+            if(!IsLoaded||(automatic&&trainerRestoreSuperseded))return;
+            SetTrainerConnectionStatus(ex is OperationCanceledException?UiText.Get("Pokus o připojení skončil. Trenažér můžeš připojit ručně.")
+                : UiText.Format($"Připojení trenažéru {selected.Name} selhalo: {ex.Message}"));
         }
-        finally{trainerConnection=null;}
+        finally
+        {
+            trainerConnection=null;
+            trainerConnectingAutomatically=false;
+            SetTrainerActivity(null);
+        }
     }
-    void ConnectionChanged(BluetoothLEDevice s,object e){if(s.ConnectionStatus==BluetoothConnectionStatus.Disconnected)Dispatcher.BeginInvoke(()=>{if(ReferenceEquals(device,s)&&trainerConnection==null&&(!riding||!demo)){riding=false;timer.Stop();SetRideMode(false);Status.Text=UiText.Get("Trenažér se odpojil. Jízda zastavena.")+EndRide("Přerušeno");}});}
+    void ConnectionChanged(BluetoothLEDevice s,object e){if(s.ConnectionStatus==BluetoothConnectionStatus.Disconnected)Dispatcher.BeginInvoke(()=>{if(ReferenceEquals(device,s)&&trainerConnection==null&&(!riding||!demo)){riding=false;timer.Stop();SetRideMode(false);string message=UiText.Get("Trenažér se odpojil. Jízda zastavena.")+EndRide("Přerušeno");DisconnectCore();SetTrainerConnectionStatus(message);}});}
     void ControlChanged(GattCharacteristic s,GattValueChangedEventArgs e){var b=new byte[e.CharacteristicValue.Length];DataReader.FromBuffer(e.CharacteristicValue).ReadBytes(b);reply?.TrySetResult(b);}
     async Task Command(byte[] b,CancellationToken cancellation=default){
         await gate.WaitAsync(cancellation);try{
@@ -273,7 +322,7 @@ public partial class MainWindow : Window
         if(control==null||device?.ConnectionStatus!=BluetoothConnectionStatus.Connected){Status.Text=UiText.Get("Nejprve připojte trenažér.");return;}
         if(riding||ticking||countdown!=null||starting)return;if(pendingRide!=null){Status.Text=UiText.Get("Nejprve ulož čekající jízdu.");return;}starting=true;try{if(!await PrepareCountdown(10))return;if(control==null||device?.ConnectionStatus!=BluetoothConnectionStatus.Connected){Status.Text=UiText.Get("Trenažér není připojen.");return;}await Command([7]);demo=false;BeginRide();}catch(Exception ex){Status.Text=UiText.Get("Jízdu nelze spustit: ")+ex.Message;}finally{starting=false;}
     }
-    async void StartDemo(object s,RoutedEventArgs e){if(trainerConnection!=null){Status.Text=UiText.Get("Trenažér se ještě připojuje.");return;}if(route.Count<2){Status.Text=UiText.Get("Nejprve načtěte GPX.");return;}if(riding||ticking||countdown!=null||starting)return;starting=true;try{if(!await PrepareCountdown(3))return;demo=true;BeginRide();}finally{starting=false;}}
+    async void StartDemo(object s,RoutedEventArgs e){if(trainerConnection!=null&&!trainerConnectingAutomatically){Status.Text=UiText.Get("Trenažér se ještě připojuje.");return;}if(route.Count<2){Status.Text=UiText.Get("Nejprve načtěte GPX.");return;}if(riding||ticking||countdown!=null||starting)return;starting=true;try{if(!await PrepareCountdown(3))return;demo=true;BeginRide();}finally{starting=false;}}
     void BeginRide(){if(distance>=route[^1].D){distance=0;lastStreetDistance=double.NaN;UpdateStreetView(true);}lastGrade=double.NaN;lastTick=DateTime.UtcNow;rideStartDistance=distance;rideClock.Restart();UpdateRideMetrics();session=demo?null:new RideSession(RouteName.Text,distance,routeHasUnsavedEdits?null:routeSourcePath);currentPower=null;currentCadence=null;powerReceived=DateTime.MinValue;cadenceReceived=DateTime.MinValue;riding=true;SetRideMode(true);UpdateStreetView(true);timer.Start();PlayCountdownSound(true);Status.Text=demo?UiText.Get("Ukázková jízda: odpor se nemění."):UiText.Get("Jízda zahájena.");}
     async void Tick(object? s,EventArgs e){
         if(!riding||ticking)return;ticking=true;try{
@@ -283,7 +332,7 @@ public partial class MainWindow : Window
             distance=Math.Min(route[^1].D,distance+speed/3.6*dt);
             session?.AddSample(distance,(now-lastData).TotalSeconds<=5?speed:null,
                 (now-cadenceReceived).TotalSeconds<=5?currentCadence:null,
-                (now-powerReceived).TotalSeconds<=5?currentPower:null);
+                (now-powerReceived).TotalSeconds<=5?currentPower:null,CurrentHeartRate);
             double grade=Slope();UpdateView();
             if(!demo&&(double.IsNaN(lastGrade)||Math.Abs(grade-lastGrade)>=0.5)){
                 short raw=(short)Math.Round(grade*100);await Command([0x11,0,0,(byte)(raw&255),(byte)((raw>>8)&255),40,51]);lastGrade=grade;
@@ -293,8 +342,26 @@ public partial class MainWindow : Window
     }
     void UpdateView(){if(route.Count<2)return;Progress.Value=distance/route[^1].D*100;Grade.Text=$"{Slope():F1} %";Grade.Foreground=GradeBrush(Slope());RideInfo.Text=$"Ujeto {distance/1000:F2} z {route[^1].D/1000:F2} km"+(demo?UiText.Get(" · ukázková jízda"):"");if(demo||riding)Speed.Text=$"{speed:F1} km/h";UpdateRideMetrics();DrawProfile(null,null);SendPosition();}
     async void StopRide(object s,RoutedEventArgs e){if(countdown!=null){countdown.Cancel();Status.Text=UiText.Get("Odpočítávání zrušeno.");return;}bool real=riding&&!demo;riding=false;timer.Stop();SetRideMode(false);Status.Text=UiText.Get("Jízda zastavena.")+EndRide("Ukončeno");if(real)try{await Command([8,1]);}catch(Exception ex){Status.Text=UiText.Get("Jízda zastavena, trenažér nepotvrdil zastavení: ")+ex.Message;}}
-    void Disconnect(object s,RoutedEventArgs e){if(trainerConnection!=null){trainerConnection.Cancel();return;}DisconnectCore();Status.Text=UiText.Get("Trenažér odpojen.");}
-    void DisconnectCore(){EndRide("Přerušeno");riding=false;timer.Stop();SetRideMode(false);speed=0;lastData=DateTime.MinValue;if(data!=null)data.ValueChanged-=DataChanged;if(control!=null)control.ValueChanged-=ControlChanged;if(device!=null)device.ConnectionStatusChanged-=ConnectionChanged;service?.Dispose();device?.Dispose();service=null;device=null;data=null;control=null;}
+    void DisconnectTrainer()
+    {
+        if(trainerConnection!=null){trainerConnection.Cancel();return;}
+        DisconnectCore();
+        SetTrainerConnectionStatus(UiText.Get("Trenažér odpojen."));
+    }
+    void DisconnectCore()
+    {
+        EndRide("Přerušeno");riding=false;timer.Stop();SetRideMode(false);
+        speed=0;lastData=DateTime.MinValue;
+        ReleaseTrainer();
+    }
+    void ReleaseTrainer()
+    {
+        if(data!=null)data.ValueChanged-=DataChanged;
+        if(control!=null)control.ValueChanged-=ControlChanged;
+        if(device!=null)device.ConnectionStatusChanged-=ConnectionChanged;
+        service?.Dispose();device?.Dispose();
+        service=null;device=null;data=null;control=null;
+    }
 
     bool mapReady;
     bool navigationMode;
@@ -313,7 +380,7 @@ public partial class MainWindow : Window
                 Microsoft.Web.WebView2.Core.CoreWebView2HostResourceAccessKind.DenyCors);
             MapView.CoreWebView2.Settings.AreDefaultContextMenusEnabled=false;
             MapView.CoreWebView2.WebMessageReceived+=(_,e)=>{
-                if(e.TryGetWebMessageAsString()=="ready"){mapReady=true;MapStatus.Text=UiText.Get("Mapa: OpenStreetMap. Poloha vychází z ujeté vzdálenosti.");SendRoute();SendMap(new{type="rotate",enabled=RotateMap.IsChecked==true});SendMap(new{type="ride-layout",active=riding,fitMainMap=riding&&navigationMode});SendViewMode();foreach(var other in otherRiders.Values.ToArray())ShowOtherRider(other);UpdateStreetView(true);}
+                if(e.TryGetWebMessageAsString()=="ready"){mapReady=true;MapStatus.Text=UiText.Get("Mapa: OpenStreetMap. Poloha vychází z ujeté vzdálenosti.");SendRiderName();SendRoute();SendMap(new{type="rotate",enabled=RotateMap.IsChecked==true});SendMap(new{type="ride-layout",active=riding,fitMainMap=riding&&navigationMode});SendViewMode();foreach(var other in otherRiders.Values.ToArray())ShowOtherRider(other);UpdateStreetView(true);}
             };
             MapView.CoreWebView2.NavigationCompleted+=(_,e)=>{if(!e.IsSuccess)MapStatus.Text=UiText.Get("Mapu se nepodařilo načíst. Zkontrolujte připojení a WebView2 Runtime.");};
             MapView.CoreWebView2.NewWindowRequested+=(_,e)=>{e.Handled=true;try{System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(e.Uri){UseShellExecute=true});}catch{}};
@@ -353,32 +420,18 @@ public partial class MainWindow : Window
             var key=PanoramaKeyStore.Load("google3d");
             if(string.IsNullOrWhiteSpace(key))
             {
-                if(new Google3DKeyWindow{Owner=this}.ShowDialog()!=true)return;
+                OpenSettings("google3d");
                 key=PanoramaKeyStore.Load("google3d");
                 if(string.IsNullOrWhiteSpace(key))return;
             }
+            if(activeGoogle3DKey==null)RotateMap.IsChecked=false;
             activeGoogle3DKey=key;
             navigationMode=true;
             SendViewMode();
         }
         catch(Exception ex){Status.Text=UiText.Get("Google 3D nelze zapnout: ")+ex.Message;}
     }
-    void ConfigureGoogle3D(object sender,RoutedEventArgs e)
-    {
-        if(new Google3DKeyWindow{Owner=this}.ShowDialog()!=true || activeGoogle3DKey==null)return;
-        try
-        {
-            var key=PanoramaKeyStore.Load("google3d");
-            if(string.IsNullOrWhiteSpace(key))ShowNavigation(sender,e);
-            else if(key!=activeGoogle3DKey)
-            {
-                activeGoogle3DKey=key;
-                SendViewMode();
-            }
-        }
-        catch(Exception ex){Status.Text=UiText.Get("Klíč Google 3D nelze načíst: ")+ex.Message;}
-    }
-void RestoreCatalog()
+    void RestoreCatalog()
     {
         try{if(File.Exists(settingsFile)){catalogFolder=File.ReadAllText(settingsFile).Trim();RefreshCatalogCore();}}
         catch(Exception ex){CatalogInfo.Text=UiText.Get("Katalog nelze načíst: ")+ex.Message;}
@@ -406,20 +459,38 @@ void RestoreCatalog()
     {
         public string CountLabel => Completed is int count ? $"{count}×" : "—";
     }
+    bool updatingCatalogSelection;
+
     void SetCatalogEntries(IEnumerable<FileInfo> files, CompletedRideCounts? counts)
     {
-        var selectedPath=(Catalog.SelectedItem as CatalogEntry)?.File.FullName;
         var entries=files.Select(file=>new CatalogEntry(file,
             counts?.ForRoute(file.FullName,System.IO.Path.GetFileNameWithoutExtension(file.Name)))).ToList();
-        Catalog.ItemsSource=entries;
-        int selectedIndex=entries.FindIndex(entry=>string.Equals(entry.File.FullName,selectedPath,StringComparison.OrdinalIgnoreCase));
-        Catalog.SelectedIndex=entries.Count==0 ? -1 : Math.Max(0,selectedIndex);
+        updatingCatalogSelection=true;
+        try { Catalog.ItemsSource=entries; }
+        finally { updatingCatalogSelection=false; }
+        SyncCatalogSelection();
     }
-    void LoadCatalog(object s,RoutedEventArgs e)
+
+    void SyncCatalogSelection()
     {
-        if(riding||ticking){Status.Text=UiText.Get("Nejprve zastavte jízdu.");return;}
-        if(Catalog.SelectedItem is not CatalogEntry entry){Status.Text=UiText.Get("Nejprve vyberte trasu v katalogu.");return;}
-        LoadRouteFile(entry.File.FullName);
+        var selectedPath=routeHasUnsavedEdits ? null : routeSourcePath;
+        var entries=Catalog.ItemsSource as IEnumerable<CatalogEntry>;
+        var selectedEntry=entries?.FirstOrDefault(entry=>
+            string.Equals(entry.File.FullName,selectedPath,StringComparison.OrdinalIgnoreCase));
+        updatingCatalogSelection=true;
+        try { Catalog.SelectedItem=selectedEntry; }
+        finally { updatingCatalogSelection=false; }
+    }
+
+    void CatalogSelectionChanged(object sender,System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if(updatingCatalogSelection||Catalog.SelectedItem is not CatalogEntry entry)return;
+        try
+        {
+            if(riding||ticking||starting){Status.Text=UiText.Get("Nejprve zastavte jízdu.");return;}
+            LoadRouteFile(entry.File.FullName);
+        }
+        finally { SyncCatalogSelection(); }
     }
 
     int panoramaSpacing=20;
@@ -447,10 +518,62 @@ void RestoreCatalog()
         panoramaSpacing=spacing;
         if(streetKey!=null && route.Count>=2)ShowPanoramaSpacing();
     }
-    void ShowMapSettings(object sender,RoutedEventArgs e)
+    string riderName="";
+    string RiderNamePath => System.IO.Path.Combine(System.IO.Path.GetDirectoryName(settingsFile)!,"rider-name.txt");
+
+    void RestoreRiderName()
     {
-        new MapSettingsWindow(MapView.CoreWebView2?.Profile,panoramaSpacing,SavePanoramaSpacing)
-            {Owner=this}.ShowDialog();
+        try
+        {
+            if(File.Exists(RiderNamePath))
+                riderName=File.ReadAllText(RiderNamePath).Trim();
+        }
+        catch(Exception ex) when(ex is IOException or UnauthorizedAccessException) { }
+    }
+
+    void SaveRiderName(string name)
+    {
+        if(name.Length==0)File.Delete(RiderNamePath);
+        else
+        {
+            Directory.CreateDirectory(System.IO.Path.GetDirectoryName(RiderNamePath)!);
+            File.WriteAllText(RiderNamePath,name);
+        }
+        riderName=name;
+        SendRiderName();
+    }
+
+    void SendRiderName()=>SendMap(new{type="rider-name",name=riderName});
+
+    void ShowMapSettings(object sender,RoutedEventArgs e) => OpenSettings();
+
+    void OpenSettings(string? keyProvider=null)
+    {
+        new MapSettingsWindow(MapView.CoreWebView2?.Profile,panoramaSpacing,SavePanoramaSpacing,riderName,SaveRiderName,
+            keyProvider ?? (streetKey!=null ? streetProvider : null)) {Owner=this}.ShowDialog();
+        try
+        {
+            if(activeGoogle3DKey!=null)
+            {
+                string? key=PanoramaKeyStore.Load("google3d");
+                if(key!=activeGoogle3DKey)
+                {
+                    activeGoogle3DKey=string.IsNullOrWhiteSpace(key) ? null : key;
+                    SendViewMode();
+                }
+            }
+            if(streetKey!=null)
+            {
+                string? key=PanoramaKeyStore.Load(streetProvider);
+                if(string.IsNullOrWhiteSpace(key)){TurnOffPanorama();RememberPanoramaProvider("off");}
+                else if(key!=streetKey)
+                {
+                    SetActivePanorama(streetProvider,key);
+                    UpdateStreetView(true);
+                }
+            }
+        }
+        catch(Exception ex){Status.Text=UiText.Get("Klíč se nepodařilo uložit nebo načíst: ")+ex.Message;}
     }
     void ShowPanoramaSpacing() =>
         StreetStatus.Text=UiText.Format($"Panorama zapnuto. Obnovuje se po {panoramaSpacing} m. Dostupnost snímků závisí na trase.");
@@ -480,28 +603,69 @@ void RestoreCatalog()
         return (Math.Atan2(y,x)/rad+360)%360;
     }
     void SetMapRotation(object s,RoutedEventArgs e)=>SendMap(new{type="rotate",enabled=RotateMap.IsChecked==true});
-    void EnableStreetView(object s,RoutedEventArgs e)
+    bool updatingPanoramaPicker;
+
+    void SetPanoramaPicker(string provider)
     {
-        var provider=SelectedPanoramaProvider();
-        var key=GoogleKey.Password.Trim();
-        try {
-            if(string.IsNullOrWhiteSpace(key)) key=PanoramaKeyStore.Load(provider) ?? "";
-            else PanoramaKeyStore.Save(provider,key);
-        } catch(Exception ex) { StreetStatus.Text=UiText.Get("Klíč se nepodařilo uložit nebo načíst: ")+ex.Message;return; }
-        if(string.IsNullOrWhiteSpace(key)){StreetStatus.Text=UiText.Get("Zadejte API klíč zvoleného poskytovatele.");return;}
-        streetKey=key;streetProvider=provider;GoogleKey.Clear();lastStreetDistance=double.NaN;UpdateKeyStatus();
-        string? preferenceError=null;
-        try { PanoramaKeyStore.RememberProvider(provider); }
-        catch { preferenceError=UiText.Get(" Poskytovatele se nepodařilo uložit pro příští spuštění."); }
-        ShowPanoramaSpacing();
-        if(route.Count>=2)UpdateStreetView(true);
-        else StreetStatus.Text=UiText.Get("Panorama zapnuto. Pro zobrazení načtěte GPX trasu.");
-        if(preferenceError!=null)StreetStatus.Text+=preferenceError;
+        updatingPanoramaPicker=true;
+        try { PanoramaProvider.SelectedValue=provider; }
+        finally { updatingPanoramaPicker=false; }
     }
-    void DisableStreetView(object s,RoutedEventArgs e)
+
+    void PanoramaProviderChanged(object sender,System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        streetKey=null;GoogleKey.Clear();lastStreetDistance=double.NaN;
-        SendMap(new{type="streetview-off"});StreetStatus.Text=UiText.Get("Street View je vypnuté.");
+        if(!IsLoaded || updatingPanoramaPicker || PanoramaProvider.SelectedValue is not string provider)return;
+        if(provider=="off")
+        {
+            TurnOffPanorama();
+            RememberPanoramaProvider(provider);
+            return;
+        }
+        try
+        {
+            string? key=PanoramaKeyStore.Load(provider);
+            if(string.IsNullOrWhiteSpace(key))
+            {
+                PanoramaProvider.IsDropDownOpen=false;
+                SetPanoramaPicker(streetKey==null ? "off" : streetProvider);
+                OpenSettings(provider);
+                key=PanoramaKeyStore.Load(provider);
+                if(string.IsNullOrWhiteSpace(key))return;
+            }
+            SetActivePanorama(provider,key);
+            RememberPanoramaProvider(provider);
+            ShowPanorama(sender,e);
+        }
+        catch(Exception ex)
+        {
+            SetPanoramaPicker(streetKey==null ? "off" : streetProvider);
+            Status.Text=UiText.Get("Klíč se nepodařilo uložit nebo načíst: ")+ex.Message;
+        }
+    }
+
+    void SetActivePanorama(string provider,string key)
+    {
+        streetProvider=provider;
+        streetKey=key;
+        lastStreetDistance=double.NaN;
+        SetPanoramaPicker(provider);
+        if(route.Count>=2)ShowPanoramaSpacing();
+        else StreetStatus.Text=UiText.Get("Panorama zapnuto. Pro zobrazení načtěte GPX trasu.");
+    }
+
+    void TurnOffPanorama()
+    {
+        streetKey=null;
+        lastStreetDistance=double.NaN;
+        SetPanoramaPicker("off");
+        SendMap(new{type="streetview-off"});
+        StreetStatus.Text=UiText.Get("Street View je vypnuté.");
+    }
+
+    void RememberPanoramaProvider(string provider)
+    {
+        try { PanoramaKeyStore.RememberProvider(provider); }
+        catch { StreetStatus.Text+=UiText.Get(" Poskytovatele se nepodařilo uložit pro příští spuštění."); }
     }
     void UpdateStreetView(bool force=false)
     {
@@ -512,43 +676,28 @@ void RestoreCatalog()
         lastStreetDistance=distance;
     }
 
-    string SelectedPanoramaProvider()=>PanoramaProvider.SelectedIndex==0?"mapy":"google";
-    void PanoramaProviderChanged(object s, System.Windows.Controls.SelectionChangedEventArgs e)
-    {
-        if(!IsLoaded)return;
-        GoogleKey.Clear();
-        UpdateKeyStatus();
-    }
-    void UpdateKeyStatus()
-    {
-        try {
-            KeyStatus.Text=PanoramaKeyStore.Exists(SelectedPanoramaProvider())
-                ? UiText.Get("Pro zvoleného poskytovatele je klíč uložen. Ponech prázdné pro jeho použití nebo zadej nový.")
-                : UiText.Get("Pro zvoleného poskytovatele zatím není uložen klíč.");
-        } catch { KeyStatus.Text=UiText.Get("Stav uloženého klíče se nepodařilo zjistit."); }
-    }
-    void ForgetPanoramaKey(object s,RoutedEventArgs e)
-    {
-        var provider=SelectedPanoramaProvider();
-        try {
-            PanoramaKeyStore.Delete(provider); GoogleKey.Clear();
-            if(streetProvider==provider && streetKey!=null)DisableStreetView(s,e);
-            UpdateKeyStatus(); StreetStatus.Text=UiText.Get("Uložený klíč zvoleného poskytovatele byl odstraněn.");
-        } catch(Exception ex) { StreetStatus.Text=UiText.Get("Klíč nelze odstranit: ")+ex.Message; }
-    }
     void AutoStartPanorama()
     {
-        try {
+        try
+        {
             var provider=PanoramaKeyStore.LastProvider();
-            if(provider==null){StreetStatus.Text=UiText.Get("Pro automatické zapnutí zadejte a uložte API klíč.");return;}
-            PanoramaProvider.SelectedIndex=provider=="mapy"?0:1;
-            EnableStreetView(this,new RoutedEventArgs());
-        } catch(Exception ex) { StreetStatus.Text=UiText.Get("Panorama se nepodařilo automaticky zapnout: ")+ex.Message; }
-    }    void SetRideMode(bool active)
+            if(provider=="off")TurnOffPanorama();
+            else if(provider!=null && PanoramaKeyStore.Load(provider) is string key && !string.IsNullOrWhiteSpace(key))
+            {
+                SetActivePanorama(provider,key);
+                UpdateStreetView(true);
+            }
+            else StreetStatus.Text=UiText.Get("Pro automatické zapnutí zadejte a uložte API klíč.");
+        }
+        catch(Exception ex) { StreetStatus.Text=UiText.Get("Panorama se nepodařilo automaticky zapnout: ")+ex.Message; }
+    }
+
+    void SetRideMode(bool active)
     {
         if(!active)rideClock.Stop();
         SetFullscreen(active);
         SetupPanel.Visibility=active?Visibility.Collapsed:Visibility.Visible;
+        TrainerButton.Visibility=HeartRateButton.Visibility=SetupPanel.Visibility;
         bool fitMainMap=active && navigationMode;
         if(fitMainMap)RotateMap.IsChecked=false;
         SendMap(new{type="ride-layout",active,fitMainMap});
@@ -751,6 +900,7 @@ void RestoreCatalog()
             route.Clear();route.AddRange(edited);distance=0;lastStreetDistance=double.NaN;
             RouteName.Text=RouteName.Text+UiText.Get(" – upravená");
             routeHasUnsavedEdits=true;
+            SyncCatalogSelection();
             UpdateRouteInfo();
             UpdateView();SendRoute();UpdateStreetView(true);
             Status.Text=UiText.Get("Upravená trasa je připravena k jízdě.");

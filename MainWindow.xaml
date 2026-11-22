@@ -10,7 +10,7 @@
         <StackPanel Orientation="Horizontal">
           <TextBlock Text="SUITO RIDE" FontSize="20" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,16,4"/>
           <Button Content="{local:Ui 'Historie tréninků'}" Click="ShowHistory"/>
-          <Button Content="{local:Ui 'Cache a panorama'}" Click="ShowMapSettings"/>
+          <Button Content="{local:Ui 'Nastavení'}" Click="ShowMapSettings"/>
           <Button Content="{local:Ui 'Zkontrolovat aktualizace'}" Click="CheckForUpdates"/>
           <Button x:Name="RetrySaveButton" Content="{local:Ui 'Uložit čekající jízdu'}" Click="RetrySaveRide" Visibility="Collapsed"/>
         </StackPanel>
@@ -19,7 +19,7 @@
         <StackPanel Orientation="Horizontal">
           <Button Content="{local:Ui 'Vybrat složku tras'}" Click="ChooseFolder"/>
           <Button Content="{local:Ui 'Obnovit katalog'}" Click="RefreshCatalog"/>
-          <ComboBox x:Name="Catalog" Width="300" Margin="0,0,6,4" HorizontalContentAlignment="Stretch">
+          <ComboBox x:Name="Catalog" SelectionChanged="CatalogSelectionChanged" Width="300" Margin="0,0,6,4" HorizontalContentAlignment="Stretch">
             <ComboBox.ItemTemplate>
               <DataTemplate>
                 <DockPanel ToolTip="{Binding File.Name}">
@@ -29,7 +29,6 @@
               </DataTemplate>
             </ComboBox.ItemTemplate>
           </ComboBox>
-          <Button Content="{local:Ui 'Načíst z katalogu'}" Click="LoadCatalog"/>
           <Button Content="{local:Ui 'Načíst GPX'}" Click="LoadRoute"/>
           <Button Content="{local:Ui 'Upravit trasu'}" Click="EditRoute"/>
         </StackPanel>
@@ -39,35 +38,36 @@
         <TextBlock x:Name="CatalogInfo" Grid.Column="0" Foreground="#99b2bf" Text="{local:Ui 'Katalog: složka zatím není vybrána.'}" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
         <TextBlock x:Name="RouteInfo" Grid.Column="1" Foreground="#99b2bf" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
       </Grid>
-      <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left">
-        <StackPanel Orientation="Horizontal">
-          <Button Content="{local:Ui 'Vyhledat trenažér'}" Click="Scan"/>
-          <ComboBox x:Name="Devices" DisplayMemberPath="Name" Width="210" Margin="0,0,6,4"/>
-          <Button Content="{local:Ui 'Připojit vybraný'}" Click="Connect"/>
-          <Button Content="{local:Ui 'Odpojit'}" Click="Disconnect"/>
-          <TextBlock x:Name="RouteName" Text="{local:Ui 'Zatím není načtená žádná trasa'}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,4" MaxWidth="300" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
-        </StackPanel>
-      </Viewbox>
-      <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left">
-        <StackPanel Orientation="Horizontal">
-          <TextBlock Text="{local:Ui 'PANORAMA'}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,4"/>
-          <ComboBox x:Name="PanoramaProvider" Width="145" SelectedIndex="0" SelectionChanged="PanoramaProviderChanged" Margin="0,0,6,4"><ComboBoxItem Content="Mapy.com"/><ComboBoxItem Content="Google Street View"/></ComboBox>
-          <PasswordBox x:Name="GoogleKey" Width="145" Margin="0,0,6,4" ToolTip="{local:Ui 'API klíč panoramatu'}"/>
-          <Button Content="{local:Ui 'Zapnout'}" Click="EnableStreetView"/><Button Content="{local:Ui 'Vypnout'}" Click="DisableStreetView"/><Button Content="{local:Ui 'Klíč Google 3D'}" Click="ConfigureGoogle3D"/><Button Content="{local:Ui 'Odstranit klíč'}" Click="ForgetPanoramaKey"/>
-        </StackPanel>
-      </Viewbox>
+      <TextBlock x:Name="RouteName" Text="{local:Ui 'Zatím není načtená žádná trasa'}" FontWeight="SemiBold" Margin="0,2,0,5" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
       <Grid Margin="0,0,0,4">
-        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-        <TextBlock x:Name="KeyStatus" Grid.Column="0" Foreground="#99b2bf" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
-        <TextBlock x:Name="StreetStatus" Grid.Column="1" Foreground="#99b2bf" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
-        <TextBlock x:Name="MapStatus" Grid.Column="2" Text="{local:Ui 'Načítám mapu…'}" Foreground="#99b2bf" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+        <TextBlock x:Name="StreetStatus" Grid.Column="0" Foreground="#99b2bf" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+        <TextBlock x:Name="MapStatus" Grid.Column="1" Text="{local:Ui 'Načítám mapu…'}" Foreground="#99b2bf" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
       </Grid>
     </StackPanel>
     <Grid Grid.Row="1">
       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
       <WrapPanel x:Name="MapControls" Grid.Row="0">
+        <Button x:Name="TrainerButton" AutomationProperties.Name="{local:Ui 'Trenažér'}" Background="#12485A" Tag="#185D72" Click="OpenTrainer">
+          <StackPanel Orientation="Horizontal">
+            <Path Width="17" Height="15" Margin="0,0,6,0" VerticalAlignment="Center" Stretch="Uniform" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5" StrokeLineJoin="Round" Data="M 4,7 A 3,3 0 1 0 4,13 A 3,3 0 1 0 4,7 M 16,7 A 3,3 0 1 0 16,13 A 3,3 0 1 0 16,7 M 4,10 L 8,4 L 12,10 L 4,10 M 12,10 L 14,3 L 16,3 M 16,10 L 14,3 M 6,4 L 9,4"/>
+            <TextBlock Text="{local:Ui 'Trenažér'}" VerticalAlignment="Center"/>
+          </StackPanel>
+        </Button>
+        <Button x:Name="HeartRateButton" AutomationProperties.Name="{local:Ui 'Hrudní pás'}" Background="#722D49" Tag="#8D3859" Click="OpenHeartRate">
+          <StackPanel Orientation="Horizontal">
+            <Path Width="16" Height="14" Margin="0,0,6,0" VerticalAlignment="Center" Stretch="Uniform" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Data="M 8,14 C 6,12 0,8 0,4 A 4,4 0 0 1 8,3 A 4,4 0 0 1 16,4 C 16,8 10,12 8,14 Z"/>
+            <TextBlock Text="{local:Ui 'Hrudní pás'}" VerticalAlignment="Center"/>
+          </StackPanel>
+        </Button>
         <Button Content="{local:Ui 'Zobrazit celou trasu'}" ToolTip="{local:Ui 'Platí pro hlavní mapu'}" Click="FitMap"/>
         <Button Content="{local:Ui 'Sledovat jezdce'}" ToolTip="{local:Ui 'Platí pro hlavní mapu'}" Click="FollowRider"/><Button Content="{local:Ui 'Navigační pohled'}" Click="ShowNavigation" ToolTip="{local:Ui 'Nakloněná mapa ve směru jízdy'}"/><Button Content="Google 3D" Click="ShowGoogle3D" ToolTip="{local:Ui 'Letecký 3D pohled ve směru jízdy'}"/><Button Content="{local:Ui 'Panorama'}" Click="ShowPanorama"/><Button Content="{local:Ui 'Společná jízda'}" Click="OpenSharedRide"/>
+        <ComboBox x:Name="PanoramaProvider" Width="154" Margin="0,0,6,4" SelectedIndex="0"
+                  SelectedValuePath="Tag" SelectionChanged="PanoramaProviderChanged" ToolTip="{local:Ui 'Poskytovatel panoramatu'}">
+          <ComboBoxItem Tag="off" Content="{local:Ui 'Panorama vypnuto'}"/>
+          <ComboBoxItem Tag="mapy" Content="Mapy.com"/>
+          <ComboBoxItem Tag="google" Content="Google Street View"/>
+        </ComboBox>
         <CheckBox x:Name="RotateMap" IsChecked="True" Content="{local:Ui 'Mapa ve směru jízdy'}" ToolTip="{local:Ui 'Platí pro hlavní mapu'}" Foreground="White" VerticalAlignment="Center" Margin="0,0,6,4" Checked="SetMapRotation" Unchecked="SetMapRotation"/>
       </WrapPanel>
       <wv:WebView2 x:Name="MapView" Grid.Row="1" MinHeight="100" Margin="0,0,0,6"/>
@@ -80,10 +80,19 @@
     <Grid Grid.Row="3">
       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
       <StackPanel Grid.Column="0">
-        <UniformGrid Columns="5">
-          <StackPanel><TextBlock Text="{local:Ui 'VÝKON'}" Foreground="#99b2bf"/><TextBlock x:Name="Power" Text="— W" FontSize="20"/></StackPanel>
+        <UniformGrid Columns="6">
+          <StackPanel>
+            <TextBlock Text="{local:Ui 'VÝKON'}" Foreground="#99b2bf"/>
+            <TextBlock x:Name="Power" Text="— W" FontSize="20"/>
+            <TextBlock x:Name="TrainerActivity" Visibility="Collapsed" Foreground="#F5BE5B" TextWrapping="Wrap" TextTrimming="None"/>
+          </StackPanel>
           <StackPanel><TextBlock Text="{local:Ui 'RYCHLOST'}" Foreground="#99b2bf"/><StackPanel Orientation="Horizontal"><TextBlock x:Name="Speed" Text="— km/h" FontSize="20"/><TextBlock x:Name="SpeedTrend" FontSize="19" Margin="6,0,0,0" ToolTip="{local:Ui 'Porovnání s průměrnou rychlostí jízdy'}"/></StackPanel></StackPanel>
           <StackPanel><TextBlock Text="{local:Ui 'KADENCE'}" Foreground="#99b2bf"/><TextBlock x:Name="Cadence" Text="{local:Ui '— ot/min'}" FontSize="20"/></StackPanel>
+          <StackPanel>
+            <TextBlock Text="{local:Ui 'TEP'}" Foreground="#99b2bf"/>
+            <TextBlock x:Name="HeartRate" Text="— bpm" FontSize="20" ToolTip="{Binding ToolTip, ElementName=HeartRateButton}"/>
+            <TextBlock x:Name="HeartRateActivity" Visibility="Collapsed" Foreground="#F5BE5B" TextWrapping="Wrap" TextTrimming="None"/>
+          </StackPanel>
           <StackPanel><TextBlock Text="{local:Ui 'ČAS JÍZDY'}" Foreground="#99b2bf"/><TextBlock x:Name="Elapsed" Text="00:00:00" FontSize="20"/></StackPanel><Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left"><StackPanel><TextBlock Text="{local:Ui 'SKLON · DALŠÍCH 500 m'}" Foreground="#99b2bf"/><StackPanel Orientation="Horizontal"><TextBlock x:Name="Grade" Text="— %" FontSize="20" VerticalAlignment="Center"/><Canvas x:Name="ZoomProfile" Width="110" Height="44" Background="#1c2c38" Margin="8,0,0,0" ClipToBounds="True" SizeChanged="DrawProfile" ToolTip="{local:Ui 'Profil následujících 500 metrů; bílá čára označuje aktuální polohu.'}"/></StackPanel></StackPanel></Viewbox>
         </UniformGrid>
         <TextBlock x:Name="RideInfo" Text="{local:Ui 'Pro skutečnou jízdu připojte trenažér.'}" Foreground="#99b2bf" Margin="0,2,0,0" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>

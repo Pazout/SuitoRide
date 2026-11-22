@@ -3,10 +3,12 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css">
-<style>html,body{height:100%;margin:0;background:#1c2c38}#layout{height:100%;display:flex}#mapwrap{height:100%;flex:1;min-width:200px;position:relative}#map{height:100%;width:100%}#overview{display:none;position:absolute;right:8px;top:8px;width:140px;height:105px;z-index:1000;border:2px solid white;box-shadow:0 1px 5px #333;background:#ddd}#navwrap{display:none;width:50%;min-width:200px;height:100%;position:relative;background:#1c2c38}#layout.ride #navwrap{width:75%}#navmap{width:100%;height:100%}#naverror{display:none;position:absolute;z-index:2;top:10px;left:10px;right:10px;background:#fff;color:#333;padding:8px;font:14px sans-serif}#panowrap{display:none;width:50%;min-width:200px;height:100%;position:relative;background:#1c2c38}#layout.ride #panowrap{width:75%}.googlepano{position:absolute;inset:0;width:100%;height:100%;border:0;opacity:0;pointer-events:none;transition:opacity 240ms ease}
+<style>html,body{height:100%;margin:0;background:#1c2c38}#layout{height:100%;display:flex}#mapwrap{height:100%;flex:1;min-width:200px;position:relative}#map{height:100%;width:100%}#overview{display:none;position:absolute;right:8px;top:8px;width:140px;height:105px;z-index:1000;border:2px solid white;box-shadow:0 1px 5px #333;background:#ddd}#navwrap{display:none;width:50%;min-width:200px;height:100%;position:relative;background:#1c2c38}#layout.ride #navwrap{width:75%}#navmap{width:100%;height:100%}#naverror{display:none;position:absolute;z-index:2;top:10px;left:10px;right:10px;background:#fff;color:#333;padding:8px;font:14px sans-serif}#panowrap{display:none;width:50%;min-width:200px;height:100%;position:relative;background:#1c2c38}#layout.ride #panowrap{width:75%}.googlepano{position:absolute;inset:0;width:100%;height:100%;border:0;opacity:0;pointer-events:none;transition:opacity 1200ms ease-in-out}
 .googlepano.visible{opacity:1;pointer-events:auto}
 @media (prefers-reduced-motion:reduce){.googlepano{transition:none}}.panoimg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity 1200ms ease-in-out}.panoimg.visible{opacity:1}@media (prefers-reduced-motion:reduce){.panoimg{transition:none}}#panoerror{display:none;position:absolute;z-index:2;top:1em;left:1em;right:1em;color:white;font:14px sans-serif}#notice{position:absolute;z-index:1000;top:10px;left:55px;background:white;color:#333;padding:7px;border-radius:4px;font:13px sans-serif}.nav-rider,.nav-peer{width:16px;height:16px;border:3px solid white;border-radius:50%;box-shadow:0 1px 5px #333;background:#f5ba44}.nav-peer{background:#e25a75}.rider{background:#f5ba44;border:3px solid white;border-radius:50%;box-shadow:0 1px 5px #333}
-#google3dwrap{display:none;flex:1;min-width:0;height:100%}
+.nav-rider[data-rider-name]::after{content:attr(data-rider-name);position:absolute;left:calc(100% + 6px);top:50%;transform:translateY(-50%);white-space:nowrap;background:white;color:#333;border-radius:4px;padding:3px 6px;font:12px sans-serif;box-shadow:0 1px 4px #333;pointer-events:none}
+#google3dwrap{display:none;width:50%;min-width:200px;height:100%}
+#layout.ride #google3dwrap{width:75%}
 #google3dwrap iframe{display:block;width:100%;height:100%;border:0}
 </style>
 <script src="localization.js"></script></head><body><div id="layout"><div id="mapwrap"><div id="map"></div><div id="overview" title="Přehled celé trasy" data-l10n-title=""></div></div><div id="navwrap"><div id="navmap"></div><div id="naverror"></div></div><div id="google3dwrap"></div><div id="panowrap"><div id="panoerror" data-l10n>Panorama není dostupné. Zkontrolujte klíč, připojení nebo dostupnost snímků.</div></div></div><div id="notice" data-l10n>Načtěte GPX trasu.</div>
@@ -23,6 +25,7 @@ else{
  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(overview);
  let overviewLine=null,overviewRider=null;
  let nav=null,navLoaded=false,navMode=false,panoramaVisible=false,navRoute=[],navPosition=null,navRider=null,navDisplay=null,navFrame=null;
+ let riderName='',navRiderElement=null;
  const google3DOrigin='https://suitoride-3d.local';
  const google3DWrap=document.getElementById('google3dwrap');
  let google3DFrame=null, google3DKey=null, latestGoogle3DPosition=null, pendingMainFit=false;
@@ -39,7 +42,7 @@ else{
   frame.referrerPolicy='strict-origin-when-cross-origin';
   frame.addEventListener('load',()=>{
    if(google3DFrame!==frame)return;
-   sendGoogle3D({type:'init',key,points:navRoute,position:latestGoogle3DPosition});
+   sendGoogle3D({type:'init',key,points:navRoute,position:latestGoogle3DPosition,riderName});
   },{once:true});
   frame.src=google3DOrigin+'/google3d/index.html'+(globalThis.location?.search ?? '');
   google3DFrame=frame;
@@ -67,8 +70,6 @@ else{
  function refreshPanels(){
   const showingGoogle3D=google3DFrame!==null;
   google3DWrap.style.display=showingGoogle3D?'block':'none';
-  document.getElementById('mapwrap').style.display=showingGoogle3D?'none':'block';
-  notice.style.visibility=showingGoogle3D?'hidden':'visible';
   navwrap.style.display=navMode&&!showingGoogle3D?'block':'none';
   panowrap.style.display=!showingGoogle3D&&!navMode&&panoramaVisible?'block':'none';
   requestAnimationFrame(resizeActiveMap);
@@ -102,13 +103,33 @@ else{
  function renderNavPosition(){
   if(!navLoaded||!navDisplay)return;
   const pos=[navDisplay.lon,navDisplay.lat];
-  if(!navRider){const element=document.createElement('div');element.className='nav-rider';navRider=new maplibregl.Marker({element}).setLngLat(pos).addTo(nav);}
+  if(!navRider){
+   navRiderElement=document.createElement('div');
+   navRiderElement.className='nav-rider';
+   updateNavRiderLabel();
+   navRider=new maplibregl.Marker({element:navRiderElement}).setLngLat(pos).addTo(nav);
+  }
   else navRider.setLngLat(pos);
   if(navMode&&!nav.isZooming()){
    const camera={center:pos,bearing:navDisplay.heading,pitch:50};
    if(!navCameraPlaced){camera.zoom=restoreNavigationZoom();navCameraPlaced=true;}
    nav.jumpTo(camera);
   }
+ }
+ function updateNavRiderLabel(){
+  if(!navRiderElement)return;
+  navRiderElement.title=riderName||t('Jezdec');
+  if(riderName)navRiderElement.dataset.riderName=riderName;
+  else delete navRiderElement.dataset.riderName;
+ }
+ function updateMainRiderLabel(){
+  if(!rider)return;
+  rider.getElement().title=riderName||t('Jezdec');
+  if(!riderName){rider.unbindTooltip();return;}
+  const label=document.createElement('span');
+  label.textContent=riderName;
+  if(rider.getTooltip())rider.setTooltipContent(label);
+  else rider.bindTooltip(label,{permanent:true,direction:'right',offset:[9,0]});
  }
  function updateNavPosition(animate){
   if(!navLoaded||!navPosition)return;
@@ -157,6 +178,8 @@ else{
   img.onerror=()=>{if(generation===imageGeneration){lastMapyRequest=null;panoerror.style.display='block';}};
   img.src=url;
  }
+ const googlePanoRenderDelay=1200;
+ const googlePanoFadeTimeout=1250;
  let activeGooglePano=null,pendingGooglePano=null,queuedGooglePanoUrl=null;
 
  function clearGooglePanos(){
@@ -201,7 +224,7 @@ else{
   frame.addEventListener('load',()=>{
    if(pendingGooglePano!==next)return;
    clearTimeout(next.timer);
-   // The iframe load event does not report when Google's imagery has finished drawing.
+   // The Embed API iframe can finish loading before its Street View imagery has drawn.
    next.timer=setTimeout(()=>{
     if(pendingGooglePano!==next)return;
     const previous=activeGooglePano?.frame;
@@ -214,8 +237,22 @@ else{
     frame.classList.add('visible');
     activeGooglePano=next;
     panoerror.style.display='none';
-    next.timer=setTimeout(()=>{previous?.remove();finish();},250);
-   },300);
+
+    if(!previous||window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+     previous?.remove();
+     finish();
+     return;
+    }
+
+    function completeFade(){
+     if(pendingGooglePano!==next)return;
+     clearTimeout(next.timer);
+     previous.remove();
+     finish();
+    }
+    frame.addEventListener('transitionend',completeFade,{once:true});
+    next.timer=setTimeout(completeFade,googlePanoFadeTimeout);
+   },googlePanoRenderDelay);
   },{once:true});
   frame.addEventListener('error',fail,{once:true});
   next.timer=setTimeout(fail,8000);
@@ -225,7 +262,6 @@ else{
 
  const mark=L.divIcon({className:'rider',iconSize:[14,14],iconAnchor:[10,10]});
  function resizeActiveMap(){
-  if(google3DFrame)return;
   map.invalidateSize();
   if(pendingMainFit){pendingMainFit=false;fitMainMap();}
   else {applyHeading();if(follow&&rider)map.panTo(rider.getLatLng(),{animate:false});updateOverview();}
@@ -247,14 +283,19 @@ else{
    navRoute=m.points;latestGoogle3DPosition=null;sendGoogle3D({type:'route',points:navRoute});navPosition={lat:m.points[0][0],lon:m.points[0][1]};updateNavRoute();
    if(line)map.removeLayer(line);if(rider)map.removeLayer(rider);
    line=L.polyline(m.points,{color:'#137e69',weight:5}).addTo(map);
-   rider=L.marker(m.points[0],{icon:mark,title:t('Jezdec')}).addTo(map);
+   rider=L.marker(m.points[0],{icon:mark,title:riderName||t('Jezdec')}).addTo(map);
+   if(riderName)updateMainRiderLabel();
    if(overviewLine)overview.removeLayer(overviewLine);if(overviewRider)overview.removeLayer(overviewRider);
    overviewLine=L.polyline(m.points,{color:'#137e69',weight:3}).addTo(overview);
    overviewRider=L.circleMarker(m.points[0],{radius:5,color:'white',weight:2,fillColor:'#f5ba44',fillOpacity:1}).addTo(overview);
    map.setBearing(0);if(follow)map.setView(rider.getLatLng(),15);else map.fitBounds(line.getBounds(),{padding:[25,25],maxZoom:16});applyHeading();updateOverview();updateNavPosition(false);notice.style.display='none';
   }else if(m.type==='position'&&rider){
    latestGoogle3DPosition=m;sendGoogle3D({type:'position',position:m});
-   heading=m.heading;navPosition={lat:m.lat,lon:m.lon};updateNavPosition(true);rider.setLatLng([m.lat,m.lon]);if(overviewRider)overviewRider.setLatLng([m.lat,m.lon]);if(!google3DFrame){applyHeading();if(follow)map.panTo([m.lat,m.lon],{animate:false});}
+   heading=m.heading;navPosition={lat:m.lat,lon:m.lon};updateNavPosition(true);rider.setLatLng([m.lat,m.lon]);if(overviewRider)overviewRider.setLatLng([m.lat,m.lon]);applyHeading();if(follow)map.panTo([m.lat,m.lon],{animate:false});
+  }else if(m.type==='rider-name'){
+   riderName=m.name;
+   updateMainRiderLabel();updateNavRiderLabel();
+   sendGoogle3D({type:'rider-name',name:riderName});
   }else if(m.type==='fit'&&line){fitMainMap();}
   else if(m.type==='follow'&&rider){pendingMainFit=false;follow=true;updateOverview();map.setView(rider.getLatLng(),Math.max(map.getZoom(),15));}
   else if(m.type==='peer'){
@@ -267,7 +308,10 @@ else{
   else if(m.type==='peer-clear'){for(const marker of peers.values())map.removeLayer(marker);peers.clear();for(const marker of navPeers.values())marker.remove();navPeers.clear();}
   else if(m.type==='rotate'){rotate=m.enabled;applyHeading();}
   else if(m.type==='navigation-mode'){closeGoogle3D();navMode=m.enabled;refreshPanels();if(navMode)initNavigation();updateNavPosition(false);}
-  else if(m.type==='google-3d-mode'){navMode=false;openGoogle3D(m.key);refreshPanels();}
+  else if(m.type==='google-3d-mode'){
+   if(!google3DFrame)pendingMainFit=true;
+   navMode=false;openGoogle3D(m.key);refreshPanels();
+  }
   else if(m.type==='ride-layout'){
    document.getElementById('layout').classList.toggle('ride',m.active);
    if(m.fitMainMap)pendingMainFit=true;

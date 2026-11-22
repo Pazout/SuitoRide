@@ -5,15 +5,19 @@ Suito Ride je aplikace pro Windows pro jízdu po GPX trase na chytrém cyklotren
 ## Stažení a první jízda
 
 1. Na stránce [Releases](https://github.com/Pazout/SuitoRide/releases/latest) stáhni ZIP pro Windows x64, rozbal celý obsah do jedné složky a spusť SuitoRide.exe. ZIP obsahuje potřebný .NET runtime. Pro mapy je potřeba Microsoft Edge WebView2 Runtime a připojení k internetu.
-2. Načti GPX s nadmořskou výškou u každého bodu a jedním souvislým úsekem. Pro vyzkoušení je v repozitáři ukazka.gpx. Katalog umí zobrazit trasy z vybrané složky a počty jejich dokončení. Poslední použitý GPX se při spuštění obnoví, pokud je soubor stále dostupný.
-3. Ukázkovou jízdu můžeš spustit bez trenažéru. Pro skutečnou jízdu zapni Bluetooth a připoj vybraný trenažér. Aplikace si zapamatuje poslední úspěšné připojení.
+2. Načti GPX s nadmořskou výškou u každého bodu a jedním souvislým úsekem. Pro vyzkoušení je v repozitáři ukazka.gpx. Katalog zobrazuje trasy z vybrané složky a počty jejich dokončení. GPX se načte hned po výběru v katalogu. Poslední použitý GPX se při spuštění obnoví, pokud je soubor stále dostupný.
+3. Ukázkovou jízdu můžeš spustit bez trenažéru. Pro skutečnou jízdu zapni Bluetooth a v dialogu **Trenažér** vyhledej a připoj vybrané zařízení. Aplikace si zapamatuje poslední úspěšně připojený trenažér a při příštím spuštění ho zkusí vyhledat a připojit.
 4. Ukázková jízda začíná odpočtem 3–2–1, skutečná má deset sekund. Odpočet lze zrušit klávesou Escape nebo tlačítkem v okně.
 
 ## Mapy a trasy
 
-Základní mapa a navigační pohled MapLibre fungují bez klíče. Navigace se otáčí ve směru jízdy a sleduje polohu jezdce. Volitelně lze zadat vlastní klíč pro statická panoramata Mapy.com, Google Street View (Maps Embed API) nebo Google 3D (Maps JavaScript API). Rozestup panoramat lze nastavit od 10 m, výchozí je 20 m. Nastavení Cache a panorama nabízí také zobrazení a vyčištění diskové mezipaměti.
+Základní mapa a navigační pohled MapLibre fungují bez klíče. Navigace se otáčí ve směru jízdy a sleduje polohu jezdce. Volitelně lze zadat vlastní klíč pro statická panoramata Mapy.com, Google Street View (Maps Embed API) nebo Google 3D (Maps JavaScript API). Při zapnutí Google 3D se vlevo zobrazí přehled celé trasy. Klíče všech tří služeb najdeš v Nastavení. Poskytovatele panoramatu lze změnit u mapy i během jízdy. V Nastavení lze také upravit rozestup panoramat od 10 m (výchozí je 20 m), zobrazit velikost diskové mezipaměti a vyčistit ji.
 
 Na výškovém profilu lze vybrat nový začátek a cíl, obrátit směr a uložit vybraný úsek jako nový GPX. Aplikace ukazuje celkové stoupání i klesání a při jízdě náhled na příštích přibližně 500 metrů. Ujetá vzdálenost vychází z rychlosti hlášené trenažérem. Přesnost sklonu závisí na výškových údajích GPX.
+
+## Hrudní pás
+
+Přes **Hrudní pás** připojíš snímač s Bluetooth LE Heart Rate Service. Aktuální tep je vidět v přehledu jízdy. Naměřené hodnoty se ukládají do historie skutečné jízdy a do exportu TCX, který aplikace používá i při odesílání na Stravu a přes FitnessSyncer. Poslední úspěšně připojený pás si aplikace zapamatuje. Při příštím spuštění aplikace se pokusí pás vyhledat a připojit. Automatické vyhledávání pásu i trenažéru běží nejvýš pět minut. Ruční vyhledání nebo připojení zruší automatický pokus pro dané zařízení jen v aktuálním spuštění aplikace.
 
 ## Historie a sdílení
 
@@ -25,6 +29,6 @@ Pro společnou jízdu použijte shodnou GPX trasu včetně směru a vybraného �
 
 Tlačítko Zkontrolovat aktualizace nabídne novější veřejný balíček z GitHubu. Nastavení, historie a webová data jsou v adresáři %LOCALAPPDATA%\SuitoRide. Klíče a přístupové tokeny se ukládají zašifrované pro aktuální účet Windows.
 
-Vývojová verze 0.2.11 vybírá jazyk podle regionálního formátu Windows. Podporuje češtinu, angličtinu, němčinu, francouzštinu, španělštinu, japonštinu, polštinu a slovenštinu. Pro ostatní jazyky použije angličtinu.
+Výchozí jazyk vychází z regionálního formátu Windows. V Nastavení lze ručně vybrat češtinu, angličtinu, němčinu, francouzštinu, španělštinu, japonštinu, polštinu nebo slovenštinu. Ruční volba se použije při příštím spuštění; pro nepodporované regionální formáty se používá angličtina.
 
 Pro vlastní sestavení spusť Sestavit.ps1 s .NET 10 SDK. Aplikace a server se sestaví do složky app. Před sestavením zavři běžící aplikaci.

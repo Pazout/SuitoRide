@@ -37,7 +37,7 @@ internal static class PanoramaKeyStore
     static string ProviderPath => System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SuitoRide", "panorama-provider.txt");
     public static void RememberProvider(string provider)
     {
-        _ = KeyPath(provider);
+        if (provider != "off") _ = KeyPath(provider);
         System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(ProviderPath)!);
         System.IO.File.WriteAllText(ProviderPath,provider);
     }
@@ -46,7 +46,7 @@ internal static class PanoramaKeyStore
         if (System.IO.File.Exists(ProviderPath))
         {
             var provider=System.IO.File.ReadAllText(ProviderPath).Trim();
-            if ((provider=="mapy" || provider=="google") && Exists(provider)) return provider;
+            if (provider=="off" || ((provider=="mapy" || provider=="google") && Exists(provider))) return provider;
         }
         if (Exists("mapy")) return "mapy";
         if (Exists("google")) return "google";

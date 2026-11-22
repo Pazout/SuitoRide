@@ -13,17 +13,22 @@ internal sealed class MapSettingsWindow : SuitoDialog
     readonly string? cachePath;
     readonly TextBlock cacheStatus = new() { TextWrapping=TextWrapping.Wrap };
 
-    public MapSettingsWindow(CoreWebView2Profile? profile, int spacing, Action<int> saveSpacing)
+    public MapSettingsWindow(CoreWebView2Profile? profile, int spacing, Action<int> saveSpacing, string riderName, Action<string> saveRiderName, string? keyProvider = null)
     {
         this.profile=profile;
         cachePath=profile==null ? null : Path.Combine(profile.ProfilePath,"Cache");
-        Title=UiText.Get("Cache a panorama");
+        Title=UiText.Get("Nastavení");
         Width=550;
         SizeToContent=SizeToContent.Height;
         ResizeMode=ResizeMode.NoResize;
         WindowStartupLocation=WindowStartupLocation.CenterOwner;
 
         var panel=new StackPanel { Margin=new Thickness(16) };
+        panel.Children.Add(CreateLanguageSettings());
+        panel.Children.Add(CreateRiderNameSettings(riderName,saveRiderName));
+        panel.Children.Add(new Separator { Margin=new Thickness(0,8,0,8) });
+        panel.Children.Add(new MapApiKeySettings(keyProvider));
+        panel.Children.Add(new Separator { Margin=new Thickness(0,8,0,8) });
         var spacingRow=new StackPanel { Orientation=Orientation.Horizontal, Margin=new Thickness(0,0,0,8) };
         var label=new Label { Content=UiText.Get("Rozestup snímků (m):"), VerticalAlignment=VerticalAlignment.Center };
         var spacingBox=new ComboBox { ItemsSource=SpacingOptions, SelectedItem=spacing, Width=85, VerticalAlignment=VerticalAlignment.Center };
@@ -73,6 +78,82 @@ internal sealed class MapSettingsWindow : SuitoDialog
             catch(Exception ex){cacheStatus.Text=UiText.Get("Mezipaměť nelze vyčistit: ")+ex.Message;}
             finally{clear.IsEnabled=true;}
         };
+    }
+
+    static StackPanel CreateRiderNameSettings(string currentName, Action<string> saveName)
+    {
+        var panel=new StackPanel { Margin=new Thickness(0,6,0,0) };
+        var row=new DockPanel();
+        var nameBox=new TextBox { Text=currentName, MaxLength=30, VerticalContentAlignment=VerticalAlignment.Center };
+        var label=new Label { Content=UiText.Get("Jméno jezdce na mapě"), Target=nameBox, VerticalAlignment=VerticalAlignment.Center };
+        var save=new Button { Content=UiText.Get("Uložit jméno"), Margin=new Thickness(8,0,0,0), IsEnabled=false };
+        var status=new TextBlock { TextWrapping=TextWrapping.Wrap };
+        DockPanel.SetDock(save,Dock.Right);
+        row.Children.Add(label);
+        row.Children.Add(save);
+        row.Children.Add(nameBox);
+        panel.Children.Add(row);
+        panel.Children.Add(status);
+
+        nameBox.TextChanged+=(_,_)=>save.IsEnabled=nameBox.Text.Trim()!=currentName;
+        save.Click+=(_,_)=>{
+            string name=nameBox.Text.Trim();
+            try
+            {
+                saveName(name);
+                currentName=name;
+                nameBox.Text=name;
+                save.IsEnabled=false;
+                status.Text=UiText.Get("Jméno jezdce uloženo.");
+            }
+            catch(Exception ex) when(ex is IOException or UnauthorizedAccessException)
+            {
+                status.Text=UiText.Get("Jméno jezdce se nepodařilo uložit.");
+            }
+        };
+        return panel;
+    }
+
+    static StackPanel CreateLanguageSettings()
+    {
+        var choices = new[] { new UiText.LanguageChoice("", UiText.Get("Podle regionálního nastavení Windows")) }
+            .Concat(UiText.LanguageChoices).ToArray();
+        string saved = UiText.ReadPreference();
+        var panel = new StackPanel();
+        var selector = new ComboBox
+        {
+            ItemsSource = choices,
+            DisplayMemberPath = nameof(UiText.LanguageChoice.Name),
+            SelectedValuePath = nameof(UiText.LanguageChoice.Code),
+            SelectedValue = saved
+        };
+        var status = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 5, 0, 0) };
+        panel.Children.Add(new Label { Content = UiText.Get("Jazyk aplikace"), Target = selector });
+        panel.Children.Add(selector);
+        panel.Children.Add(status);
+        selector.SelectionChanged += (_, _) =>
+        {
+            if (selector.SelectedValue is not string selected || selected == saved) return;
+            try
+            {
+                UiText.SavePreference(selected);
+                saved = selected;
+                ShowPendingLanguage();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                status.Text = UiText.Get("Jazyk se nepodařilo uložit.");
+                selector.SelectedValue = saved;
+            }
+        };
+        ShowPendingLanguage();
+        return panel;
+
+        void ShowPendingLanguage()
+        {
+            var selectedLanguage=UiText.ResolveLanguage(System.Globalization.CultureInfo.CurrentCulture,saved);
+            status.Text=selectedLanguage!=UiText.Language ? UiText.Get("Jazyk se změní po restartu aplikace.") : "";
+        }
     }
 
     async Task UpdateCacheSizeAsync(string prefix="")

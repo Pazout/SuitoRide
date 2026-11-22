@@ -4,7 +4,7 @@ using System.Text.Json;
 
 namespace SuitoRide;
 
-public sealed record RideSample(double ElapsedSeconds, double DistanceMeters, double? SpeedKmh, double? CadenceRpm, double? PowerWatts);
+public sealed record RideSample(double ElapsedSeconds, double DistanceMeters, double? SpeedKmh, double? CadenceRpm, double? PowerWatts, int? HeartRateBpm = null);
 
 public sealed record RideRecord(
     Guid Id, DateTimeOffset StartedAt, string RouteName, string Result,
@@ -33,9 +33,9 @@ internal sealed class RideSession
     {
         if (watts >= 0 && double.IsFinite(watts) && seconds > 0) { powerSum += watts * seconds; powerSeconds += seconds; }
     }
-    public void AddSample(double distance,double? speed,double? cadence,double? power)
+    public void AddSample(double distance,double? speed,double? cadence,double? power,int? heartRate)
     {
-        samples.Add(new(clock.Elapsed.TotalSeconds,Math.Max(0,distance-initialDistance),speed,cadence,power));
+        samples.Add(new(clock.Elapsed.TotalSeconds,Math.Max(0,distance-initialDistance),speed,cadence,power,heartRate));
     }
     public RideRecord Finish(double distance, string result)
     {
