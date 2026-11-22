@@ -11,7 +11,7 @@ internal sealed class CountdownWindow : Window
     readonly Action cancel;
     bool dismissing;
 
-    public CountdownWindow(Action cancelCountdown)
+    public CountdownWindow(int initialSeconds,Action cancelCountdown)
     {
         cancel=cancelCountdown;
         Title="Příprava na jízdu";
@@ -30,7 +30,7 @@ internal sealed class CountdownWindow : Window
         layout.RowDefinitions.Add(new RowDefinition { Height=GridLength.Auto });
         var center=new StackPanel { VerticalAlignment=VerticalAlignment.Center, HorizontalAlignment=HorizontalAlignment.Center };
         center.Children.Add(new TextBlock { Text="PŘIPRAV SE NA JÍZDU", FontSize=28, FontWeight=FontWeights.SemiBold, Foreground=new SolidColorBrush(Color.FromRgb(150,215,197)), HorizontalAlignment=HorizontalAlignment.Center });
-        number=new TextBlock { Text="10", FontSize=230, FontWeight=FontWeights.Bold, HorizontalAlignment=HorizontalAlignment.Center, TextAlignment=TextAlignment.Center };
+        number=new TextBlock { Text=initialSeconds.ToString(), FontSize=230, FontWeight=FontWeights.Bold, HorizontalAlignment=HorizontalAlignment.Center, TextAlignment=TextAlignment.Center };
         center.Children.Add(new Viewbox { Stretch=Stretch.Uniform, MaxHeight=320, Child=number });
         center.Children.Add(new TextBlock { Text="sekund do startu", FontSize=24, HorizontalAlignment=HorizontalAlignment.Center });
         Grid.SetRow(center,0);layout.Children.Add(center);

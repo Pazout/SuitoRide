@@ -3,11 +3,13 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css">
-<style>html,body{height:100%;margin:0;background:#1c2c38}#layout{height:100%;display:flex}#mapwrap{height:100%;flex:1;min-width:200px;position:relative}#map{height:100%;width:100%}#overview{display:none;position:absolute;right:8px;top:8px;width:140px;height:105px;z-index:1000;border:2px solid white;box-shadow:0 1px 5px #333;background:#ddd}#navwrap{display:none;width:50%;min-width:200px;height:100%;position:relative;background:#1c2c38}#layout.ride #navwrap{width:75%}#navmap{width:100%;height:100%}#naverror{display:none;position:absolute;z-index:2;top:10px;left:10px;right:10px;background:#fff;color:#333;padding:8px;font:14px sans-serif}#panowrap{display:none;width:50%;min-width:200px;height:100%;position:relative;background:#1c2c38}#layout.ride #panowrap{width:75%}#pano{width:100%;height:100%;border:0;display:none}.panoimg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity 1200ms ease-in-out}.panoimg.visible{opacity:1}@media (prefers-reduced-motion:reduce){.panoimg{transition:none}}#panoerror{display:none;position:absolute;top:1em;left:1em;right:1em;color:white;font:14px sans-serif}#notice{position:absolute;z-index:1000;top:10px;left:55px;background:white;color:#333;padding:7px;border-radius:4px;font:13px sans-serif}.nav-rider,.nav-peer{width:16px;height:16px;border:3px solid white;border-radius:50%;box-shadow:0 1px 5px #333;background:#f5ba44}.nav-peer{background:#e25a75}.rider{background:#f5ba44;border:3px solid white;border-radius:50%;box-shadow:0 1px 5px #333}
+<style>html,body{height:100%;margin:0;background:#1c2c38}#layout{height:100%;display:flex}#mapwrap{height:100%;flex:1;min-width:200px;position:relative}#map{height:100%;width:100%}#overview{display:none;position:absolute;right:8px;top:8px;width:140px;height:105px;z-index:1000;border:2px solid white;box-shadow:0 1px 5px #333;background:#ddd}#navwrap{display:none;width:50%;min-width:200px;height:100%;position:relative;background:#1c2c38}#layout.ride #navwrap{width:75%}#navmap{width:100%;height:100%}#naverror{display:none;position:absolute;z-index:2;top:10px;left:10px;right:10px;background:#fff;color:#333;padding:8px;font:14px sans-serif}#panowrap{display:none;width:50%;min-width:200px;height:100%;position:relative;background:#1c2c38}#layout.ride #panowrap{width:75%}.googlepano{position:absolute;inset:0;width:100%;height:100%;border:0;opacity:0;pointer-events:none;transition:opacity 240ms ease}
+.googlepano.visible{opacity:1;pointer-events:auto}
+@media (prefers-reduced-motion:reduce){.googlepano{transition:none}}.panoimg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity 1200ms ease-in-out}.panoimg.visible{opacity:1}@media (prefers-reduced-motion:reduce){.panoimg{transition:none}}#panoerror{display:none;position:absolute;z-index:2;top:1em;left:1em;right:1em;color:white;font:14px sans-serif}#notice{position:absolute;z-index:1000;top:10px;left:55px;background:white;color:#333;padding:7px;border-radius:4px;font:13px sans-serif}.nav-rider,.nav-peer{width:16px;height:16px;border:3px solid white;border-radius:50%;box-shadow:0 1px 5px #333;background:#f5ba44}.nav-peer{background:#e25a75}.rider{background:#f5ba44;border:3px solid white;border-radius:50%;box-shadow:0 1px 5px #333}
 #google3dwrap{display:none;flex:1;min-width:0;height:100%}
 #google3dwrap iframe{display:block;width:100%;height:100%;border:0}
 </style>
-</head><body><div id="layout"><div id="mapwrap"><div id="map"></div><div id="overview" title="Přehled celé trasy"></div></div><div id="navwrap"><div id="navmap"></div><div id="naverror"></div></div><div id="google3dwrap"></div><div id="panowrap"><iframe id="pano" title="Street View" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe><div id="panoerror">Panorama není dostupné. Zkontrolujte klíč, připojení nebo dostupnost snímků.</div></div></div><div id="notice">Načtěte GPX trasu.</div>
+</head><body><div id="layout"><div id="mapwrap"><div id="map"></div><div id="overview" title="Přehled celé trasy"></div></div><div id="navwrap"><div id="navmap"></div><div id="naverror"></div></div><div id="google3dwrap"></div><div id="panowrap"><div id="panoerror">Panorama není dostupné. Zkontrolujte klíč, připojení nebo dostupnost snímků.</div></div></div><div id="notice">Načtěte GPX trasu.</div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="leaflet-rotate.js"></script>
 <script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
@@ -132,7 +134,7 @@ else{
  let line=null,rider=null,follow=true,rotate=false,heading=0;
  function updateOverview(){document.getElementById('overview').style.display=follow&&line?'block':'none';if(follow&&line)requestAnimationFrame(()=>{overview.invalidateSize();overview.fitBounds(overviewLine.getBounds(),{padding:[6,6],maxZoom:15});});}
  const peers=new Map();
- const notice=document.getElementById('notice'),pano=document.getElementById('pano'),panowrap=document.getElementById('panowrap'),panoerror=document.getElementById('panoerror');
+ const notice=document.getElementById('notice'),panowrap=document.getElementById('panowrap'),panoerror=document.getElementById('panoerror');
  let imageGeneration=0, activeImage=null, lastMapyRequest=null;
  function clearImages(){imageGeneration++;panowrap.querySelectorAll('.panoimg').forEach(img=>img.remove());activeImage=null;lastMapyRequest=null;}
  function loadPanorama(url){
@@ -154,6 +156,72 @@ else{
   img.onerror=()=>{if(generation===imageGeneration){lastMapyRequest=null;panoerror.style.display='block';}};
   img.src=url;
  }
+ let activeGooglePano=null,pendingGooglePano=null,queuedGooglePanoUrl=null;
+
+ function clearGooglePanos(){
+  if(pendingGooglePano)clearTimeout(pendingGooglePano.timer);
+  panowrap.querySelectorAll('.googlepano').forEach(frame=>frame.remove());
+  activeGooglePano=pendingGooglePano=queuedGooglePanoUrl=null;
+ }
+
+ function loadGooglePano(url){
+  if(pendingGooglePano){
+   queuedGooglePanoUrl=pendingGooglePano.url===url?null:url;
+   return;
+  }
+  if(activeGooglePano?.url===url)return;
+
+  const frame=document.createElement('iframe');
+  frame.className='googlepano';
+  frame.title='Google Street View';
+  frame.referrerPolicy='strict-origin-when-cross-origin';
+  frame.allowFullscreen=true;
+  frame.tabIndex=-1;
+  frame.setAttribute('aria-hidden','true');
+  const next={frame,url,timer:null};
+  pendingGooglePano=next;
+
+  function finish(){
+   if(pendingGooglePano!==next)return;
+   pendingGooglePano=null;
+   const newer=queuedGooglePanoUrl;
+   queuedGooglePanoUrl=null;
+   if(newer)loadGooglePano(newer);
+  }
+
+  function fail(){
+   if(pendingGooglePano!==next)return;
+   clearTimeout(next.timer);
+   frame.remove();
+   if(!activeGooglePano)panoerror.style.display='block';
+   finish();
+  }
+
+  frame.addEventListener('load',()=>{
+   if(pendingGooglePano!==next)return;
+   clearTimeout(next.timer);
+   // The iframe load event does not report when Google's imagery has finished drawing.
+   next.timer=setTimeout(()=>{
+    if(pendingGooglePano!==next)return;
+    const previous=activeGooglePano?.frame;
+    if(previous){
+     previous.tabIndex=-1;
+     previous.setAttribute('aria-hidden','true');
+    }
+    frame.tabIndex=0;
+    frame.removeAttribute('aria-hidden');
+    frame.classList.add('visible');
+    activeGooglePano=next;
+    panoerror.style.display='none';
+    next.timer=setTimeout(()=>{previous?.remove();finish();},250);
+   },300);
+  },{once:true});
+  frame.addEventListener('error',fail,{once:true});
+  next.timer=setTimeout(fail,8000);
+  frame.src=url;
+  panowrap.insertBefore(frame,panoerror);
+ }
+
  const mark=L.divIcon({className:'rider',iconSize:[14,14],iconAnchor:[10,10]});
  function resizeActiveMap(){
   if(google3DFrame)return;
@@ -207,18 +275,18 @@ else{
   else if(m.type==='streetview'){
    panoramaVisible=true;refreshPanels();panoerror.style.display='none';
    if(m.provider==='mapy'){
-    if(pano.style.display!=='none'){pano.src='about:blank';pano.style.display='none';clearImages();}
+    clearGooglePanos();
     const rect=panowrap.getBoundingClientRect(),scale=Math.min(1024/Math.max(1,rect.width),1024/Math.max(1,rect.height),1);
     const width=Math.max(200,Math.round(rect.width*scale)),height=Math.max(200,Math.round(rect.height*scale));
     const params=new URLSearchParams({apikey:m.key,lat:String(m.lat),lon:String(m.lon),yaw:String(m.heading*Math.PI/180),width:String(width),height:String(height),radius:'50',lang:'cs'});
     loadPanorama('https://api.mapy.com/v1/static/pano?'+params.toString());
    }else{
-    clearImages();pano.style.display='block';
+    clearImages();
     const params=new URLSearchParams({key:m.key,location:m.lat+','+m.lon,heading:String(m.heading),pitch:'0',fov:'90'});
-    pano.src='https://www.google.com/maps/embed/v1/streetview?'+params.toString();
+    loadGooglePano('https://www.google.com/maps/embed/v1/streetview?'+params.toString());
    }
    setTimeout(()=>map.invalidateSize(),50);
-  }else if(m.type==='streetview-off'){pano.src='about:blank';clearImages();pano.style.display='none';panoramaVisible=false;refreshPanels();setTimeout(()=>map.invalidateSize(),50);}
+  }else if(m.type==='streetview-off'){clearGooglePanos();clearImages();panoramaVisible=false;refreshPanels();setTimeout(()=>map.invalidateSize(),50);}
  });
  window.chrome.webview.postMessage('ready');
 }

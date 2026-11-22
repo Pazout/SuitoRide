@@ -271,9 +271,9 @@ public partial class MainWindow : Window
         if(route.Count<2){Status.Text="Nejprve načtěte GPX.";return;}
         if(trainerConnection!=null){Status.Text="Trenažér se ještě připojuje.";return;}
         if(control==null||device?.ConnectionStatus!=BluetoothConnectionStatus.Connected){Status.Text="Nejprve připojte trenažér.";return;}
-        if(riding||ticking||countdown!=null||starting)return;if(pendingRide!=null){Status.Text="Nejprve ulož čekající jízdu.";return;}starting=true;try{if(!await PrepareCountdown())return;if(control==null||device?.ConnectionStatus!=BluetoothConnectionStatus.Connected){Status.Text="Trenažér není připojen.";return;}await Command([7]);demo=false;BeginRide();}catch(Exception ex){Status.Text="Jízdu nelze spustit: "+ex.Message;}finally{starting=false;}
+        if(riding||ticking||countdown!=null||starting)return;if(pendingRide!=null){Status.Text="Nejprve ulož čekající jízdu.";return;}starting=true;try{if(!await PrepareCountdown(10))return;if(control==null||device?.ConnectionStatus!=BluetoothConnectionStatus.Connected){Status.Text="Trenažér není připojen.";return;}await Command([7]);demo=false;BeginRide();}catch(Exception ex){Status.Text="Jízdu nelze spustit: "+ex.Message;}finally{starting=false;}
     }
-    async void StartDemo(object s,RoutedEventArgs e){if(trainerConnection!=null){Status.Text="Trenažér se ještě připojuje.";return;}if(route.Count<2){Status.Text="Nejprve načtěte GPX.";return;}if(riding||ticking||countdown!=null||starting)return;starting=true;try{if(!await PrepareCountdown())return;demo=true;BeginRide();}finally{starting=false;}}
+    async void StartDemo(object s,RoutedEventArgs e){if(trainerConnection!=null){Status.Text="Trenažér se ještě připojuje.";return;}if(route.Count<2){Status.Text="Nejprve načtěte GPX.";return;}if(riding||ticking||countdown!=null||starting)return;starting=true;try{if(!await PrepareCountdown(3))return;demo=true;BeginRide();}finally{starting=false;}}
     void BeginRide(){if(distance>=route[^1].D){distance=0;lastStreetDistance=double.NaN;UpdateStreetView(true);}lastGrade=double.NaN;lastTick=DateTime.UtcNow;rideStartDistance=distance;rideClock.Restart();UpdateRideMetrics();session=demo?null:new RideSession(RouteName.Text,distance,routeHasUnsavedEdits?null:routeSourcePath);currentPower=null;currentCadence=null;powerReceived=DateTime.MinValue;cadenceReceived=DateTime.MinValue;riding=true;SetRideMode(true);UpdateStreetView(true);timer.Start();PlayCountdownSound(true);Status.Text=demo?"Ukázková jízda: odpor se nemění.":"Jízda zahájena.";}
     async void Tick(object? s,EventArgs e){
         if(!riding||ticking)return;ticking=true;try{
@@ -713,7 +713,14 @@ void RestoreCatalog()
         if(route.Count<2)return;
         var completed=counts?.ForRoute(routeHasUnsavedEdits ? null : routeSourcePath,RouteName.Text);
         string count=completed is int total ? $"Dokončeno: {total}×" : "Historie nedostupná";
-        RouteInfo.Text=$"{count} · {route[^1].D/1000:F1} km · {route.Count} bodů · výška {route.Min(p=>p.Ele):F0}–{route.Max(p=>p.Ele):F0} m";
+        double ascent=0, descent=0;
+        for(int i=1;i<route.Count;i++)
+        {
+            double change=route[i].Ele-route[i-1].Ele;
+            if(change>0)ascent+=change;
+            else descent-=change;
+        }
+        RouteInfo.Text=$"{count} · {route[^1].D/1000:F1} km · +{ascent:F0} / −{descent:F0} m · {route.Count} bodů · výška {route.Min(p=>p.Ele):F0}–{route.Max(p=>p.Ele):F0} m";
     }
     List<Pt> CreateEditedRoute(double start, double end, bool reverse)
     {
@@ -765,7 +772,7 @@ void RestoreCatalog()
 
     CancellationTokenSource? countdown;
     bool starting;
-    async Task<bool> PrepareCountdown()
+    async Task<bool> PrepareCountdown(int seconds)
     {
         if(countdown!=null)return false;
         var cancel=new CancellationTokenSource();countdown=cancel;
@@ -773,11 +780,11 @@ void RestoreCatalog()
         StopButton.Visibility=Visibility.Visible;
         CountdownWindow? overlay=null;
         try {
-            overlay=new CountdownWindow(()=>{if(!cancel.IsCancellationRequested){Status.Text="Odpočítávání zrušeno.";cancel.Cancel();}});
+            overlay=new CountdownWindow(seconds,()=>{if(!cancel.IsCancellationRequested){Status.Text="Odpočítávání zrušeno.";cancel.Cancel();}});
             if(IsVisible){overlay.Owner=this;var bounds=GetMonitorBounds(this);if(bounds.HasValue)overlay.PlaceOnMonitor(bounds.Value);}
             overlay.Show();
             if(IsVisible)PlaceOnOwnerMonitor(overlay,this);
-            for(int remaining=10;remaining>0;remaining--) {
+            for(int remaining=seconds;remaining>0;remaining--) {
                 Status.Text=$"Jízda začne za {remaining} s…";
                 overlay.SetRemaining(remaining);
                 if(remaining<=3)PlayCountdownSound(false);
