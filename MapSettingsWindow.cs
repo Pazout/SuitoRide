@@ -8,7 +8,7 @@ namespace SuitoRide;
 
 internal sealed class MapSettingsWindow : SuitoDialog
 {
-    internal static IReadOnlyList<int> SpacingOptions { get; } = [20, 40, 60, 100];
+    internal static IReadOnlyList<int> SpacingOptions { get; } = [10, 20, 40, 60, 100];
     readonly CoreWebView2Profile? profile;
     readonly string? cachePath;
     readonly TextBlock cacheStatus = new() { TextWrapping=TextWrapping.Wrap };
