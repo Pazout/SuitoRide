@@ -35,7 +35,7 @@ internal sealed class FitnessSyncerService
     {
         clientId = clientId.Trim();
         if (clientId.Length != 32 || !clientId.All(Uri.IsHexDigit))
-            throw new ArgumentException("Zadej 32znakové ID osobní aplikace FitnessSyncer.");
+            throw new ArgumentException(UiText.Get("Zadej 32znakové ID osobní aplikace FitnessSyncer."));
 
         string verifier = Base64Url(RandomNumberGenerator.GetBytes(32));
         string state = Base64Url(RandomNumberGenerator.GetBytes(32));
@@ -56,14 +56,14 @@ internal sealed class FitnessSyncerService
         if (!Uri.TryCreate(address.Trim(), UriKind.Absolute, out var callback) ||
             callback.GetLeftPart(UriPartial.Path) != Redirect.AbsoluteUri ||
             callback.UserInfo.Length != 0 || callback.Fragment.Length != 0)
-            throw new ArgumentException("Vlož celou adresu https://personal.fitnesssyncer.com/ z prohlížeče.");
+            throw new ArgumentException(UiText.Get("Vlož celou adresu https://personal.fitnesssyncer.com/ z prohlížeče."));
 
         var query = HttpUtility.ParseQueryString(callback.Query);
         if (query["state"] != authorization.State ||
             (query["iss"] is string issuer && issuer != Issuer))
-            throw new ArgumentException("Adresa nepatří k tomuto přihlášení. Otevři autorizaci znovu v aplikaci.");
+            throw new ArgumentException(UiText.Get("Adresa nepatří k tomuto přihlášení. Otevři autorizaci znovu v aplikaci."));
         if (query["error"] != null || query["code"] is not string code || code.Length == 0 || code == "error")
-            throw new ArgumentException("FitnessSyncer nepovolil připojení nebo v adrese chybí autorizační kód.");
+            throw new ArgumentException(UiText.Get("FitnessSyncer nepovolil připojení nebo v adrese chybí autorizační kód."));
         return code;
     }
 
@@ -113,13 +113,13 @@ internal sealed class FitnessSyncerService
     static async Task VerifyUploadAsync(HttpResponseMessage response)
     {
         if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException($"FitnessSyncer odmítl nahrání (HTTP {(int)response.StatusCode}).");
+            throw new InvalidOperationException(UiText.Format($"FitnessSyncer odmítl nahrání (HTTP {(int)response.StatusCode})."));
         using var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         if (!result.RootElement.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array ||
             !items.EnumerateArray().Any(item => item.ValueKind == JsonValueKind.Object &&
                 item.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.String &&
                 !string.IsNullOrWhiteSpace(id.GetString()) && id.GetString() != "-FILTERED-"))
-            throw new InvalidOperationException("FitnessSyncer nepotvrdil uložení jízdy. Zkontroluj její stav ve FitnessSynceru.");
+            throw new InvalidOperationException(UiText.Get("FitnessSyncer nepotvrdil uložení jízdy. Zkontroluj její stav ve FitnessSynceru."));
     }
 
     static async Task<Tokens> RefreshAsync(Tokens tokens)
@@ -142,15 +142,15 @@ internal sealed class FitnessSyncerService
         if (!response.IsSuccessStatusCode)
         {
             string help = fields["grant_type"] == "refresh_token"
-                ? "Otevři nastavení FitnessSynceru a připoj účet znovu."
-                : "Spusť přihlášení znovu a vlož novou adresu z prohlížeče.";
-            throw new InvalidOperationException($"FitnessSyncer odmítl ověření (HTTP {(int)response.StatusCode}). {help}");
+                ? UiText.Get("Otevři nastavení FitnessSynceru a připoj účet znovu.")
+                : UiText.Get("Spusť přihlášení znovu a vlož novou adresu z prohlížeče.");
+            throw new InvalidOperationException(UiText.Format($"FitnessSyncer odmítl ověření (HTTP {(int)response.StatusCode}). {help}"));
         }
         var result = JsonSerializer.Deserialize<TokenResponse>(await response.Content.ReadAsStringAsync());
         if (result == null || string.IsNullOrWhiteSpace(result.Access) || string.IsNullOrWhiteSpace(result.Refresh) || result.Lifetime <= 0)
-            throw new InvalidOperationException("FitnessSyncer vrátil neúplné údaje o přihlášení.");
+            throw new InvalidOperationException(UiText.Get("FitnessSyncer vrátil neúplné údaje o přihlášení."));
         if (result.Scope != null && !result.Scope.Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains(Scope))
-            throw new InvalidOperationException("FitnessSyncer nepovolil zápis aktivit do Notebooku.");
+            throw new InvalidOperationException(UiText.Get("FitnessSyncer nepovolil zápis aktivit do Notebooku."));
         return new(clientId, result.Access, result.Refresh, DateTimeOffset.UtcNow.AddSeconds(result.Lifetime));
     }
 
@@ -166,18 +166,18 @@ internal sealed class FitnessSyncerService
         });
         using var response = await Http.PostAsync(Api + "/oauth/revoke_token", form);
         if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException($"Odebrání přístupu FitnessSyncer nepotvrdil (HTTP {(int)response.StatusCode}).");
+            throw new InvalidOperationException(UiText.Format($"Odebrání přístupu FitnessSyncer nepotvrdil (HTTP {(int)response.StatusCode})."));
         File.Delete(TokenPath);
     }
 
     static Tokens LoadTokens()
     {
-        if (!File.Exists(TokenPath)) throw new InvalidOperationException("Nejprve propoj účet FitnessSyncer.");
+        if (!File.Exists(TokenPath)) throw new InvalidOperationException(UiText.Get("Nejprve propoj účet FitnessSyncer."));
         byte[] plain = ProtectedData.Unprotect(File.ReadAllBytes(TokenPath), null, DataProtectionScope.CurrentUser);
         try
         {
             return JsonSerializer.Deserialize<Tokens>(plain)
-                ?? throw new InvalidOperationException("Připoj FitnessSyncer znovu.");
+                ?? throw new InvalidOperationException(UiText.Get("Připoj FitnessSyncer znovu."));
         }
         finally { CryptographicOperations.ZeroMemory(plain); }
     }

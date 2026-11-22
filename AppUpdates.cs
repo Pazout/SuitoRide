@@ -66,7 +66,7 @@ internal static class AppUpdates
 
         if (RuntimeInformation.OSArchitecture != Architecture.X64 &&
             RuntimeInformation.OSArchitecture != Architecture.Arm64)
-            throw new InvalidOperationException("Pro tento počítač je potřeba ruční aktualizace z GitHubu.");
+            throw new InvalidOperationException(UiText.Get("Pro tento počítač je potřeba ruční aktualizace z GitHubu."));
 
         string name = $"SuitoRide-{tag}-win-x64.zip";
         string expectedUrl = $"{GitHub}/releases/download/{tag}/{name}";
@@ -88,7 +88,7 @@ internal static class AppUpdates
                 update = update with { ApiDownload = new Uri($"{GitHubApi}/releases/assets/{id}") };
             return update;
         }
-        throw new InvalidOperationException($"Verze {version} je na GitHubu, ale chybí ověřitelný ZIP pro Windows x64.");
+        throw new InvalidOperationException(UiText.Format($"Verze {version} je na GitHubu, ale chybí ověřitelný ZIP pro Windows x64."));
     }
 
     public static async Task<string> InstallAsync(Update update, string? token = null)
@@ -133,7 +133,7 @@ internal static class AppUpdates
         using var deadline = new CancellationTokenSource(TimeSpan.FromMinutes(10));
         var token = deadline.Token;
         var address = accessToken == null ? update.Download : update.ApiDownload
-            ?? throw new InvalidDataException("GitHub neposkytl identifikátor souboru pro soukromé stažení.");
+            ?? throw new InvalidDataException(UiText.Get("GitHub neposkytl identifikátor souboru pro soukromé stažení."));
         using var request = GitHubRequest(address, "application/octet-stream", accessToken);
         using var response = await Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token);
         response.EnsureSuccessStatusCode();
@@ -146,26 +146,26 @@ internal static class AppUpdates
         while ((read = await input.ReadAsync(buffer, token)) > 0)
         {
             length += read;
-            if (length > update.Bytes) throw new InvalidDataException("Stažený ZIP je větší, než uvádí GitHub.");
+            if (length > update.Bytes) throw new InvalidDataException(UiText.Get("Stažený ZIP je větší, než uvádí GitHub."));
             hash.AppendData(buffer, 0, read);
             await output.WriteAsync(buffer.AsMemory(0, read), token);
         }
         if (length != update.Bytes || !CryptographicOperations.FixedTimeEquals(hash.GetHashAndReset(), Convert.FromHexString(update.Sha256)))
-            throw new InvalidDataException("Velikost nebo kontrolní součet aktualizace neodpovídá údajům na GitHubu.");
+            throw new InvalidDataException(UiText.Get("Velikost nebo kontrolní součet aktualizace neodpovídá údajům na GitHubu."));
     }
 
     static void Extract(Update update, string archivePath, string destination)
     {
         using var archive = ZipFile.OpenRead(archivePath);
         if (archive.Entries.Count > 10000 || archive.Entries.Sum(entry => entry.Length) > MaxExtractBytes)
-            throw new InvalidDataException("ZIP aktualizace je po rozbalení příliš velký.");
+            throw new InvalidDataException(UiText.Get("ZIP aktualizace je po rozbalení příliš velký."));
 
         archive.ExtractToDirectory(destination);
         string exe = Path.Combine(destination, "SuitoRide.exe");
         if (!File.Exists(exe) || !File.Exists(Path.Combine(destination, "map", "index.html")) ||
             !Version.TryParse(FileVersionInfo.GetVersionInfo(exe).FileVersion, out var actual) ||
             Normalize(actual) != Normalize(update.Version))
-            throw new InvalidDataException("ZIP neobsahuje očekávanou verzi Suito Ride.");
+            throw new InvalidDataException(UiText.Get("ZIP neobsahuje očekávanou verzi Suito Ride."));
     }
 
     static Version Normalize(Version version) => new(version.Major, version.Minor, Math.Max(0, version.Build));

@@ -17,7 +17,7 @@ internal sealed class MapSettingsWindow : SuitoDialog
     {
         this.profile=profile;
         cachePath=profile==null ? null : Path.Combine(profile.ProfilePath,"Cache");
-        Title="Cache a panorama";
+        Title=UiText.Get("Cache a panorama");
         Width=550;
         SizeToContent=SizeToContent.Height;
         ResizeMode=ResizeMode.NoResize;
@@ -25,7 +25,7 @@ internal sealed class MapSettingsWindow : SuitoDialog
 
         var panel=new StackPanel { Margin=new Thickness(16) };
         var spacingRow=new StackPanel { Orientation=Orientation.Horizontal, Margin=new Thickness(0,0,0,8) };
-        var label=new Label { Content="Rozestup snímků (m):", VerticalAlignment=VerticalAlignment.Center };
+        var label=new Label { Content=UiText.Get("Rozestup snímků (m):"), VerticalAlignment=VerticalAlignment.Center };
         var spacingBox=new ComboBox { ItemsSource=SpacingOptions, SelectedItem=spacing, Width=85, VerticalAlignment=VerticalAlignment.Center };
         label.Target=spacingBox;
         spacingRow.Children.Add(label);
@@ -40,22 +40,22 @@ internal sealed class MapSettingsWindow : SuitoDialog
             {
                 saveSpacing(selected);
                 spacing=selected;
-                settingsStatus.Text="Rozestup uložen.";
+                settingsStatus.Text=UiText.Get("Rozestup uložen.");
             }
             catch(Exception ex) when(ex is IOException or UnauthorizedAccessException)
             {
-                settingsStatus.Text="Rozestup nelze uložit: "+ex.Message;
+                settingsStatus.Text=UiText.Get("Rozestup nelze uložit: ")+ex.Message;
                 spacingBox.SelectedItem=spacing;
             }
         };
-        panel.Children.Add(new TextBlock { Text="Disková mezipaměť map a panoramat", FontWeight=FontWeights.SemiBold });
+        panel.Children.Add(new TextBlock { Text=UiText.Get("Disková mezipaměť map a panoramat"), FontWeight=FontWeights.SemiBold });
         panel.Children.Add(cacheStatus);
         panel.Children.Add(new TextBox { Text=cachePath ?? "", IsReadOnly=true, TextWrapping=TextWrapping.Wrap,
             Margin=new Thickness(0,6,0,8) });
 
         var actions=new WrapPanel();
-        var open=new Button { Content="Otevřít složku", IsEnabled=profile!=null, Padding=new Thickness(9,5,9,5), Margin=new Thickness(0,0,8,0) };
-        var clear=new Button { Content="Vyčistit mezipaměť", IsEnabled=profile!=null, Padding=new Thickness(9,5,9,5) };
+        var open=new Button { Content=UiText.Get("Otevřít složku"), IsEnabled=profile!=null, Padding=new Thickness(9,5,9,5), Margin=new Thickness(0,0,8,0) };
+        var clear=new Button { Content=UiText.Get("Vyčistit mezipaměť"), IsEnabled=profile!=null, Padding=new Thickness(9,5,9,5) };
         actions.Children.Add(open);
         actions.Children.Add(clear);
         panel.Children.Add(actions);
@@ -68,9 +68,9 @@ internal sealed class MapSettingsWindow : SuitoDialog
             try
             {
                 await profile.ClearBrowsingDataAsync(CoreWebView2BrowsingDataKinds.DiskCache);
-                await UpdateCacheSizeAsync("Vyčištěno. ");
+                await UpdateCacheSizeAsync(UiText.Get("Vyčištěno. "));
             }
-            catch(Exception ex){cacheStatus.Text="Mezipaměť nelze vyčistit: "+ex.Message;}
+            catch(Exception ex){cacheStatus.Text=UiText.Get("Mezipaměť nelze vyčistit: ")+ex.Message;}
             finally{clear.IsEnabled=true;}
         };
     }
@@ -79,18 +79,18 @@ internal sealed class MapSettingsWindow : SuitoDialog
     {
         if(cachePath==null)
         {
-            cacheStatus.Text="Webové zobrazení ještě není připravené.";
+            cacheStatus.Text=UiText.Get("Webové zobrazení ještě není připravené.");
             return;
         }
-        cacheStatus.Text="Zjišťuji velikost…";
+        cacheStatus.Text=UiText.Get("Zjišťuji velikost…");
         try
         {
             long size=await Task.Run(()=>MeasureCache(cachePath));
-            cacheStatus.Text=$"{prefix}Přibližná velikost: {size/1048576.0:N2} MiB";
+            cacheStatus.Text=UiText.Format($"{prefix}Přibližná velikost: {size/1048576.0:N2} MiB");
         }
         catch(Exception ex) when(ex is IOException or UnauthorizedAccessException)
         {
-            cacheStatus.Text=prefix+"Velikost mezipaměti nelze zjistit.";
+            cacheStatus.Text=prefix+UiText.Get("Velikost mezipaměti nelze zjistit.");
         }
     }
 
@@ -116,6 +116,6 @@ internal sealed class MapSettingsWindow : SuitoDialog
             string folder=Directory.Exists(cachePath) ? cachePath : profile.ProfilePath;
             Process.Start(new ProcessStartInfo(folder) { UseShellExecute=true });
         }
-        catch(Exception ex){cacheStatus.Text="Složku nelze otevřít: "+ex.Message;}
+        catch(Exception ex){cacheStatus.Text=UiText.Get("Složku nelze otevřít: ")+ex.Message;}
     }
 }

@@ -1,0 +1,155 @@
+(() => {
+ const catalogs = {
+  "en": {
+    " · jede": " · riding",
+    " · čeká": " · waiting",
+    "Google 3D odmítl klíč. Zkontroluj Maps JavaScript API, fakturaci a omezení klíče.": "Google 3D rejects key. Check the JavaScript API, billing and key restrictions.",
+    "Google 3D se nepodařilo načíst. Zkontroluj klíč, fakturaci nebo připojení.": "Google 3D failed to load. Check the key, billing or connection.",
+    "Google 3D se nepodařilo vykreslit. Zkontroluj připojení a podporu WebGL.": "Google 3D failed to render. Check the connection and support of WebGL.",
+    "Jezdec": "Rider",
+    "Letecký pohled ve směru virtuální jízdy": "Aerial view in the direction of virtual ride",
+    "Mapu nelze načíst. Zkontrolujte připojení k internetu.": "The map cannot be loaded. Check the Internet connection.",
+    "Navigační mapu nelze načíst. Zkontrolujte připojení k internetu.": "The navigation map can not be loaded. Check the internet connection.",
+    "Navigační mapu se nepodařilo načíst. Zkontrolujte internetové připojení.": "The navigation map failed to load. Check the internet connection.",
+    "Navigační pohled není dostupný: ": "The navigation view is not available: ",
+    "Načti GPX trasu.": "Load a GPX route.",
+    "Načtěte GPX trasu.": "Load a GPX route.",
+    "Načítám Google 3D…": "I read Google 3D...",
+    "Panorama není dostupné. Zkontrolujte klíč, připojení nebo dostupnost snímků.": "Panorama is not available. Check the key, connection or availability of images.",
+    "Přehled celé trasy": "Overview of the entire route",
+    "Trasa z GPX v Suito Ride": "GPX route in Suito Ride",
+    "přispěvatelé": "contributors"
+  },
+  "de": {
+    " · jede": " · fährt",
+    " · čeká": " · wartet",
+    "Google 3D odmítl klíč. Zkontroluj Maps JavaScript API, fakturaci a omezení klíče.": "Google 3D lehnt Schlüssel ab. Überprüfen Sie die JavaScript API, Abrechnung und Schlüsselbeschränkungen.",
+    "Google 3D se nepodařilo načíst. Zkontroluj klíč, fakturaci nebo připojení.": "Google 3D konnte nicht geladen werden. Überprüfen Sie den Schlüssel, die Abrechnung oder die Verbindung.",
+    "Google 3D se nepodařilo vykreslit. Zkontroluj připojení a podporu WebGL.": "Google 3D konnte nicht rendern. Überprüfen Sie die Verbindung und die Unterstützung von WebGL.",
+    "Jezdec": "Fahrer",
+    "Letecký pohled ve směru virtuální jízdy": "Luftansicht in Richtung virtueller Fahrt",
+    "Mapu nelze načíst. Zkontrolujte připojení k internetu.": "Die Karte kann nicht geladen werden. Überprüfen Sie die Internetverbindung.",
+    "Navigační mapu nelze načíst. Zkontrolujte připojení k internetu.": "Die Navigationskarte kann nicht geladen werden. Überprüfen Sie die Internetverbindung.",
+    "Navigační mapu se nepodařilo načíst. Zkontrolujte internetové připojení.": "Die Navigationskarte konnte nicht geladen werden. Überprüfen Sie die Internetverbindung.",
+    "Navigační pohled není dostupný: ": "Die Navigationsansicht ist nicht verfügbar: ",
+    "Načti GPX trasu.": "Lasten Sie eine GPX Route.",
+    "Načtěte GPX trasu.": "Lasten Sie eine GPX Route.",
+    "Načítám Google 3D…": "Ich las Google 3D...",
+    "Panorama není dostupné. Zkontrolujte klíč, připojení nebo dostupnost snímků.": "Panorama ist nicht verfügbar. Überprüfen Sie den Schlüssel, die Verbindung oder die Verfügbarkeit von Bildern.",
+    "Přehled celé trasy": "Überblick über die gesamte Route",
+    "Trasa z GPX v Suito Ride": "GPX-Route in Suito Ride",
+    "přispěvatelé": "Mitwirkende"
+  },
+  "fr": {
+    " · jede": " · en route",
+    " · čeká": " · en attente",
+    "Google 3D odmítl klíč. Zkontroluj Maps JavaScript API, fakturaci a omezení klíče.": "Google 3D rejette la clé. Vérifiez l'API JavaScript, la facturation et les restrictions de clé.",
+    "Google 3D se nepodařilo načíst. Zkontroluj klíč, fakturaci nebo připojení.": "Google 3D n'a pas réussi à charger. Vérifiez la clé, la facturation ou la connexion.",
+    "Google 3D se nepodařilo vykreslit. Zkontroluj připojení a podporu WebGL.": "Google 3D n'a pas rendu. Vérifiez la connexion et le support de WebGL.",
+    "Jezdec": "Cycliste",
+    "Letecký pohled ve směru virtuální jízdy": "Vue aérienne en direction de la promenade virtuelle",
+    "Mapu nelze načíst. Zkontrolujte připojení k internetu.": "La carte ne peut être chargée. Vérifiez la connexion Internet.",
+    "Navigační mapu nelze načíst. Zkontrolujte připojení k internetu.": "La carte de navigation ne peut être chargée. Vérifiez la connexion Internet.",
+    "Navigační mapu se nepodařilo načíst. Zkontrolujte internetové připojení.": "La carte de navigation n'a pas été chargée. Vérifiez la connexion Internet.",
+    "Navigační pohled není dostupný: ": "La vue de navigation n'est pas disponible: ",
+    "Načti GPX trasu.": "Chargez une route GPX.",
+    "Načtěte GPX trasu.": "Chargez une route GPX.",
+    "Načítám Google 3D…": "J'ai lu Google 3D...",
+    "Panorama není dostupné. Zkontrolujte klíč, připojení nebo dostupnost snímků.": "Panorama n'est pas disponible. Vérifiez la clé, la connexion ou la disponibilité des images.",
+    "Přehled celé trasy": "Aperçu de l'ensemble de l'itinéraire",
+    "Trasa z GPX v Suito Ride": "Parcours GPX dans Suito Ride",
+    "přispěvatelé": "contributeurs"
+  },
+  "es": {
+    " · jede": " · en marcha",
+    " · čeká": " · en espera",
+    "Google 3D odmítl klíč. Zkontroluj Maps JavaScript API, fakturaci a omezení klíče.": "Google 3D rechaza la clave. Revise la API de JavaScript, facturación y restricciones clave.",
+    "Google 3D se nepodařilo načíst. Zkontroluj klíč, fakturaci nebo připojení.": "Google 3D no se pudo cargar. Compruebe la clave, facturación o conexión.",
+    "Google 3D se nepodařilo vykreslit. Zkontroluj připojení a podporu WebGL.": "Google 3D no logró renderizar. Revise la conexión y el soporte de WebGL.",
+    "Jezdec": "Ciclista",
+    "Letecký pohled ve směru virtuální jízdy": "Vista aérea en la dirección del paseo virtual",
+    "Mapu nelze načíst. Zkontrolujte připojení k internetu.": "El mapa no se puede cargar. Compruebe la conexión a Internet.",
+    "Navigační mapu nelze načíst. Zkontrolujte připojení k internetu.": "El mapa de navegación no se puede cargar. Consulte la conexión a Internet.",
+    "Navigační mapu se nepodařilo načíst. Zkontrolujte internetové připojení.": "El mapa de navegación no se pudo cargar. Consulte la conexión a Internet.",
+    "Navigační pohled není dostupný: ": "La vista de navegación no está disponible: ",
+    "Načti GPX trasu.": "Cargue una ruta GPX.",
+    "Načtěte GPX trasu.": "Cargue una ruta GPX.",
+    "Načítám Google 3D…": "Leí Google 3D...",
+    "Panorama není dostupné. Zkontrolujte klíč, připojení nebo dostupnost snímků.": "Panorama no está disponible. Compruebe la clave, la conexión o la disponibilidad de imágenes.",
+    "Přehled celé trasy": "Vista general de toda la ruta",
+    "Trasa z GPX v Suito Ride": "Ruta GPX en Suito Ride",
+    "přispěvatelé": "colaboradores"
+  },
+  "ja": {
+    " · jede": " · 走行中",
+    " · čeká": " · 待機中",
+    "Google 3D odmítl klíč. Zkontroluj Maps JavaScript API, fakturaci a omezení klíče.": "Google 3Dはキーを拒否します。 JavaScript API、課金、キー制限を確認してください。",
+    "Google 3D se nepodařilo načíst. Zkontroluj klíč, fakturaci nebo připojení.": "Google 3D は読み込みに失敗しました。キー、課金、または接続を確認してください。",
+    "Google 3D se nepodařilo vykreslit. Zkontroluj připojení a podporu WebGL.": "Google 3Dはレンダリングに失敗しました。WebGLの接続とサポートを確認してください。",
+    "Jezdec": "ライダー",
+    "Letecký pohled ve směru virtuální jízdy": "バーチャルライドの方向にある空中ビュー",
+    "Mapu nelze načíst. Zkontrolujte připojení k internetu.": "地図は読み込まれることができません。インターネットの接続を確認してください。",
+    "Navigační mapu nelze načíst. Zkontrolujte připojení k internetu.": "ナビゲーションマップは読み込まれません。インターネットの接続を確認してください。",
+    "Navigační mapu se nepodařilo načíst. Zkontrolujte internetové připojení.": "ナビゲーションマップが読み込まれるのに失敗しました。インターネットの接続を確認してください。",
+    "Navigační pohled není dostupný: ": "ナビゲーションビューは利用できません。 ",
+    "Načti GPX trasu.": "GPX ルートをロードします。",
+    "Načtěte GPX trasu.": "GPX ルートをロードします。",
+    "Načítám Google 3D…": "私はGoogle 3Dを読んで...",
+    "Panorama není dostupné. Zkontrolujte klíč, připojení nebo dostupnost snímků.": "パノラマはご利用いただけません。画像のキー、接続、空き状況をご確認ください。",
+    "Přehled celé trasy": "ルート全体の概要",
+    "Trasa z GPX v Suito Ride": "Suito Ride の GPX ルート",
+    "přispěvatelé": "貢献者"
+  },
+  "pl": {
+    " · jede": " · jedzie",
+    " · čeká": " · czeka",
+    "Google 3D odmítl klíč. Zkontroluj Maps JavaScript API, fakturaci a omezení klíče.": "Google 3D odrzuca klucz. Sprawdź API JavaScript, rachunki i ograniczenia klucza.",
+    "Google 3D se nepodařilo načíst. Zkontroluj klíč, fakturaci nebo připojení.": "Nie udało się wczytać Google 3D. Sprawdź klucz, fakturowanie lub połączenie.",
+    "Google 3D se nepodařilo vykreslit. Zkontroluj připojení a podporu WebGL.": "Google 3D nie udało się renderować. Sprawdź połączenie i wsparcie WebGL.",
+    "Jezdec": "Rowerzysta",
+    "Letecký pohled ve směru virtuální jízdy": "Widok z lotu ptaka w kierunku wirtualnej jazdy",
+    "Mapu nelze načíst. Zkontrolujte připojení k internetu.": "Mapa nie może być załadowana. Sprawdź połączenie internetowe.",
+    "Navigační mapu nelze načíst. Zkontrolujte připojení k internetu.": "Mapa nawigacyjna nie może być załadowana. Sprawdź połączenie internetowe.",
+    "Navigační mapu se nepodařilo načíst. Zkontrolujte internetové připojení.": "Nie udało się wczytać mapy nawigacyjnej. Sprawdź połączenie internetowe.",
+    "Navigační pohled není dostupný: ": "Widok nawigacyjny nie jest dostępny: ",
+    "Načti GPX trasu.": "Załaduj trasę GPX.",
+    "Načtěte GPX trasu.": "Załaduj trasę GPX.",
+    "Načítám Google 3D…": "Czytam Google 3D...",
+    "Panorama není dostupné. Zkontrolujte klíč, připojení nebo dostupnost snímků.": "Panorama nie jest dostępna. Sprawdź klucz, połączenie lub dostępność obrazów.",
+    "Přehled celé trasy": "Przegląd całej trasy",
+    "Trasa z GPX v Suito Ride": "Trasa GPX w Suito Ride",
+    "přispěvatelé": "współtwórcy"
+  },
+  "sk": {
+    " · jede": " · ide",
+    " · čeká": " · čaká",
+    "Google 3D odmítl klíč. Zkontroluj Maps JavaScript API, fakturaci a omezení klíče.": "Google 3D odmietne kľúč. Skontrolujte JavaScript API, fakturáciu a kľúčové obmedzenia.",
+    "Google 3D se nepodařilo načíst. Zkontroluj klíč, fakturaci nebo připojení.": "Google 3D sa nepodarilo načítať. Skontrolujte kľúč, fakturáciu alebo pripojenie.",
+    "Google 3D se nepodařilo vykreslit. Zkontroluj připojení a podporu WebGL.": "Google 3D zlyhalo. Skontrolujte pripojenie a podporu WebGL.",
+    "Jezdec": "Jazdec",
+    "Letecký pohled ve směru virtuální jízdy": "Letecký pohľad v smere virtuálnej jazdy",
+    "Mapu nelze načíst. Zkontrolujte připojení k internetu.": "Mapa sa nedá načítať. Skontrolujte pripojenie na internet.",
+    "Navigační mapu nelze načíst. Zkontrolujte připojení k internetu.": "Navigačná mapa nie je možné načítať. Skontrolujte pripojenie na internet.",
+    "Navigační mapu se nepodařilo načíst. Zkontrolujte internetové připojení.": "Navigačná mapa sa nepodarilo načítať. Skontrolujte pripojenie na internet.",
+    "Navigační pohled není dostupný: ": "Navigačný pohľad nie je k dispozícii: ",
+    "Načti GPX trasu.": "Nahrajte GPX trasu.",
+    "Načtěte GPX trasu.": "Nahrajte GPX trasu.",
+    "Načítám Google 3D…": "Čítal som Google 3D...",
+    "Panorama není dostupné. Zkontrolujte klíč, připojení nebo dostupnost snímků.": "Panorama nie je k dispozícii. Skontrolujte kľúč, pripojenie alebo dostupnosť obrázkov.",
+    "Přehled celé trasy": "Prehľad celej trasy",
+    "Trasa z GPX v Suito Ride": "Trasa GPX v Suito Ride",
+    "přispěvatelé": "prispievatelia"
+  }
+};
+ const language = new URLSearchParams(location.search).get('lang') || 'cs';
+ const labels = Object.hasOwn(catalogs, language) ? catalogs[language] : {};
+ const translate = source => Object.hasOwn(labels, source) ? labels[source] : source;
+ globalThis.suitoText = translate;
+ document.documentElement.lang = language;
+ document.addEventListener('DOMContentLoaded', () => {
+  for (const element of document.querySelectorAll('[data-l10n]'))
+   element.textContent = translate(element.textContent);
+  for (const element of document.querySelectorAll('[data-l10n-title]'))
+   element.title = translate(element.title);
+ });
+})();

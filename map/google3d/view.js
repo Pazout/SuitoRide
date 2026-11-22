@@ -1,5 +1,6 @@
 'use strict';
 
+const t=(value)=>globalThis.suitoText?.(value) ?? value;
 const hostOrigin = 'https://suitoride.local';
 const statusLabel = document.getElementById('status');
 const scene = document.getElementById('scene');
@@ -37,7 +38,7 @@ function loadGoogleLibrary(key) {
             }
         }
         window.gm_authFailure = () => {
-            showError('Google 3D odmítl klíč. Zkontroluj Maps JavaScript API, fakturaci a omezení klíče.');
+            showError(t('Google 3D odmítl klíč. Zkontroluj Maps JavaScript API, fakturaci a omezení klíče.'));
             finish(new Error('authorization'));
         };
         window[callbackName] = async () => {
@@ -46,7 +47,7 @@ function loadGoogleLibrary(key) {
         };
         script.onerror = () => finish(new Error('network'));
         const params = new URLSearchParams({
-            key, v: 'weekly', loading: 'async', callback: callbackName, language: 'cs'
+            key, v: 'weekly', loading: 'async', callback: callbackName, language: document.documentElement?.lang || 'en'
         });
         script.src = 'https://maps.googleapis.com/maps/api/js?' + params.toString();
         script.referrerPolicy = 'strict-origin-when-cross-origin';
@@ -57,20 +58,20 @@ function loadGoogleLibrary(key) {
 async function ensureMap() {
     if (map || loading || failed || !target || !apiKey) return;
     loading = true;
-    showStatus('Načítám Google 3D…');
+    showStatus(t('Načítám Google 3D…'));
     try {
         library = await loadGoogleLibrary(apiKey);
         if (failed) return;
         map = new library.Map3DElement({
             center: centerOf(target), heading: target.heading,
             tilt, range, mode: 'SATELLITE', defaultUIHidden: true,
-            description: 'Letecký pohled ve směru virtuální jízdy'
+            description: t('Letecký pohled ve směru virtuální jízdy')
         });
-        map.addEventListener('gmp-error', () => showError('Google 3D se nepodařilo vykreslit. Zkontroluj připojení a podporu WebGL.'));
+        map.addEventListener('gmp-error', () => showError(t('Google 3D se nepodařilo vykreslit. Zkontroluj připojení a podporu WebGL.')));
         marker = new library.Marker3DElement({
             position: {lat: target.lat, lng: target.lon},
             altitudeMode: 'CLAMP_TO_GROUND',
-            label: 'Jezdec'
+            label: t('Jezdec')
         });
         scene.append(map);
         map.append(marker);
@@ -78,7 +79,7 @@ async function ensureMap() {
         render(target);
         showStatus('');
     } catch {
-        if (!failed) showError('Google 3D se nepodařilo načíst. Zkontroluj klíč, fakturaci nebo připojení.');
+        if (!failed) showError(t('Google 3D se nepodařilo načíst. Zkontroluj klíč, fakturaci nebo připojení.'));
     } finally {
         loading = false;
     }

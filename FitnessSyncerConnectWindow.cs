@@ -8,7 +8,7 @@ internal sealed class FitnessSyncerConnectWindow : SuitoDialog
 {
     public FitnessSyncerConnectWindow(FitnessSyncerService service)
     {
-        Title = "Připojit FitnessSyncer";
+        Title = UiText.Get("Připojit FitnessSyncer");
         Width = 560;
         SizeToContent = SizeToContent.Height;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
@@ -17,20 +17,20 @@ internal sealed class FitnessSyncerConnectWindow : SuitoDialog
         var status = new TextBlock { TextWrapping = TextWrapping.Wrap };
         var clientId = new TextBox { Margin = new Thickness(0, 2, 0, 10) };
 
-        var start = new Button { Content = "Otevřít přihlášení v prohlížeči", Padding = new Thickness(9, 5, 9, 5) };
+        var start = new Button { Content = UiText.Get("Otevřít přihlášení v prohlížeči"), Padding = new Thickness(9, 5, 9, 5) };
         var callback = new TextBox { IsEnabled = false, Margin = new Thickness(0, 2, 0, 8) };
-        var finish = new Button { Content = "Dokončit připojení", IsEnabled = false, Padding = new Thickness(9, 5, 9, 5) };
-        var disconnect = new Button { Content = "Odpojit FitnessSyncer", IsEnabled = service.IsConnected, Padding = new Thickness(9, 5, 9, 5), Margin = new Thickness(8, 0, 0, 0) };
+        var finish = new Button { Content = UiText.Get("Dokončit připojení"), IsEnabled = false, Padding = new Thickness(9, 5, 9, 5) };
+        var disconnect = new Button { Content = UiText.Get("Odpojit FitnessSyncer"), IsEnabled = service.IsConnected, Padding = new Thickness(9, 5, 9, 5), Margin = new Thickness(8, 0, 0, 0) };
         var actions = new WrapPanel { Margin = new Thickness(0, 0, 0, 8) };
         actions.Children.Add(finish);
         actions.Children.Add(disconnect);
 
-        panel.Children.Add(new Label { Content = "ID veřejného klienta", Target = clientId });
+        panel.Children.Add(new Label { Content = UiText.Get("ID veřejného klienta"), Target = clientId });
         panel.Children.Add(clientId);
         panel.Children.Add(start);
         panel.Children.Add(new TextBlock
         {
-            Text = "Po potvrzení přístupu zkopíruj z adresního řádku celou výslednou adresu personal.fitnesssyncer.com a vlož ji sem.",
+            Text = UiText.Get("Po potvrzení přístupu zkopíruj z adresního řádku celou výslednou adresu personal.fitnesssyncer.com a vlož ji sem."),
             Margin = new Thickness(0, 8, 0, 2), TextWrapping = TextWrapping.Wrap
         });
         panel.Children.Add(callback);
@@ -52,9 +52,9 @@ internal sealed class FitnessSyncerConnectWindow : SuitoDialog
                 callback.Clear();
                 callback.IsEnabled = finish.IsEnabled = true;
                 callback.Focus();
-                status.Text = "Čekám na adresu z prohlížeče.";
+                status.Text = UiText.Get("Čekám na adresu z prohlížeče.");
             }
-            catch (Exception ex) { status.Text = "Přihlášení nelze otevřít: " + ex.Message; }
+            catch (Exception ex) { status.Text = UiText.Get("Přihlášení nelze otevřít: ") + ex.Message; }
         };
         finish.Click += async (_, _) =>
         {
@@ -67,7 +67,7 @@ internal sealed class FitnessSyncerConnectWindow : SuitoDialog
                 SetBusy(false);
                 DialogResult = true;
             }
-            catch (Exception ex) { status.Text = "Připojení se nezdařilo: " + ex.Message; }
+            catch (Exception ex) { status.Text = UiText.Get("Připojení se nezdařilo: ") + ex.Message; }
             finally { if (busy) SetBusy(false); }
         };
         disconnect.Click += async (_, _) =>
@@ -76,7 +76,7 @@ internal sealed class FitnessSyncerConnectWindow : SuitoDialog
             try
             {
                 await service.DisconnectAsync();
-                status.Text = "FitnessSyncer odpojen.";
+                status.Text = UiText.Get("FitnessSyncer odpojen.");
             }
             catch (Exception ex) { status.Text = ex.Message; }
             finally { SetBusy(false); }

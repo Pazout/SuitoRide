@@ -29,24 +29,24 @@ internal sealed class SharedRideWindow : SuitoDialog
     public SharedRideWindow(string hash,Action<SharedRider> update,Action<string> remove,Action clear,Action onConnected)
     {
         routeHash=hash;updateRider=update;removeRider=remove;clearRiders=clear;connected=onConnected;
-        Title="Společná vyjížďka";Width=530;Height=480;MinWidth=480;MinHeight=460;
+        Title=UiText.Get("Společná vyjížďka");Width=530;Height=480;MinWidth=480;MinHeight=460;
         WindowStartupLocation=WindowStartupLocation.CenterOwner;
         var panel=new StackPanel{Margin=new Thickness(20)};
-        panel.Children.Add(new TextBlock{Text="Oba jezdci musí načíst stejnou GPX trasu. Spouštějte jízdu každý zvlášť.",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,0,0,12)});
-        panel.Children.Add(new TextBlock{Text="Tvoje jméno"});
+        panel.Children.Add(new TextBlock{Text=UiText.Get("Oba jezdci musí načíst stejnou GPX trasu. Spouštějte jízdu každý zvlášť."),TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,0,0,12)});
+        panel.Children.Add(new TextBlock{Text=UiText.Get("Tvoje jméno")});
         nameBox=new TextBox{Text=Environment.UserName,MaxLength=30,Margin=new Thickness(0,3,0,10)};panel.Children.Add(nameBox);
-        panel.Children.Add(new TextBlock{Text="Adresa serveru (pro připojení kamaráda)"});
+        panel.Children.Add(new TextBlock{Text=UiText.Get("Adresa serveru (pro připojení kamaráda)")});
         addressBox=new TextBox{Text="http://127.0.0.1:5077",Margin=new Thickness(0,3,0,10)};panel.Children.Add(addressBox);
-        panel.Children.Add(new TextBlock{Text="Kód místnosti"});
+        panel.Children.Add(new TextBlock{Text=UiText.Get("Kód místnosti")});
         roomBox=new TextBox{MaxLength=32,Margin=new Thickness(0,3,0,10)};panel.Children.Add(roomBox);
         var buttons=new WrapPanel();
-        hostButton=new Button{Content="Vytvořit místnost",Padding=new Thickness(9,6,9,6),Margin=new Thickness(0,0,8,8)};
-        remoteHostButton=new Button{Content="Vytvořit na serveru",Padding=new Thickness(9,6,9,6),Margin=new Thickness(0,0,8,8)};
-        joinButton=new Button{Content="Připojit se",Padding=new Thickness(9,6,9,6),Margin=new Thickness(0,0,8,8)};
-        disconnectButton=new Button{Content="Odpojit",Padding=new Thickness(9,6,9,6),Margin=new Thickness(0,0,8,8),IsEnabled=false};
-        copyButton=new Button{Content="Kopírovat kód",Padding=new Thickness(9,6,9,6),Margin=new Thickness(0,0,8,8)};
+        hostButton=new Button{Content=UiText.Get("Vytvořit místnost"),Padding=new Thickness(9,6,9,6),Margin=new Thickness(0,0,8,8)};
+        remoteHostButton=new Button{Content=UiText.Get("Vytvořit na serveru"),Padding=new Thickness(9,6,9,6),Margin=new Thickness(0,0,8,8)};
+        joinButton=new Button{Content=UiText.Get("Připojit se"),Padding=new Thickness(9,6,9,6),Margin=new Thickness(0,0,8,8)};
+        disconnectButton=new Button{Content=UiText.Get("Odpojit"),Padding=new Thickness(9,6,9,6),Margin=new Thickness(0,0,8,8),IsEnabled=false};
+        copyButton=new Button{Content=UiText.Get("Kopírovat kód"),Padding=new Thickness(9,6,9,6),Margin=new Thickness(0,0,8,8)};
         buttons.Children.Add(hostButton);buttons.Children.Add(remoteHostButton);buttons.Children.Add(joinButton);buttons.Children.Add(disconnectButton);buttons.Children.Add(copyButton);panel.Children.Add(buttons);
-        stateText=new TextBlock{Text="Pro internet použijte společnou zabezpečenou síť (VPN). Host sdělí kamarádovi svou VPN adresu a kód místnosti.",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,4,0,0)};panel.Children.Add(stateText);
+        stateText=new TextBlock{Text=UiText.Get("Pro internet použijte společnou zabezpečenou síť (VPN). Host sdělí kamarádovi svou VPN adresu a kód místnosti."),TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,4,0,0)};panel.Children.Add(stateText);
         hostButton.Click+=async (_,_)=>await Connect(true,true);
         remoteHostButton.Click+=async (_,_)=>await Connect(true,false);
         joinButton.Click+=async (_,_)=>await Connect(false,false);
@@ -68,39 +68,39 @@ internal sealed class SharedRideWindow : SuitoDialog
     {
         if(connecting||Connected)return;
         string name=nameBox.Text.Trim();
-        if(name.Length==0||name.Length>30||name.Any(char.IsControl)){stateText.Text="Zadej jméno o délce 1–30 znaků.";return;}
+        if(name.Length==0||name.Length>30||name.Any(char.IsControl)){stateText.Text=UiText.Get("Zadej jméno o délce 1–30 znaků.");return;}
         string room=create?Convert.ToHexString(RandomNumberGenerator.GetBytes(16)):roomBox.Text.Trim().ToUpperInvariant();
-        if(room.Length!=32||room.Any(c=>!Uri.IsHexDigit(c))){stateText.Text="Zadej 32znakový kód místnosti.";return;}
+        if(room.Length!=32||room.Any(c=>!Uri.IsHexDigit(c))){stateText.Text=UiText.Get("Zadej 32znakový kód místnosti.");return;}
         if(!Uri.TryCreate(localHost?"http://127.0.0.1:5077":addressBox.Text.Trim(),UriKind.Absolute,out var address)||!IsAllowed(address))
-        {stateText.Text="Použij HTTPS nebo adresu počítače v soukromé či VPN síti.";return;}
-        connecting=true;hostButton.IsEnabled=remoteHostButton.IsEnabled=joinButton.IsEnabled=false;stateText.Text="Připojuji…";
+        {stateText.Text=UiText.Get("Použij HTTPS nebo adresu počítače v soukromé či VPN síti.");return;}
+        connecting=true;hostButton.IsEnabled=remoteHostButton.IsEnabled=joinButton.IsEnabled=false;stateText.Text=UiText.Get("Připojuji…");
         try{
             if(localHost){
                 string exe=System.IO.Path.Combine(System.IO.Path.GetDirectoryName(typeof(SharedRideWindow).Assembly.Location)!,"server","SpolecnaJizda.Server.exe");
-                if(!System.IO.File.Exists(exe))throw new Exception("Chybí server společné jízdy ve složce aplikace.");
+                if(!System.IO.File.Exists(exe))throw new Exception(UiText.Get("Chybí server společné jízdy ve složce aplikace."));
                 server=Process.Start(new ProcessStartInfo{FileName=exe,Arguments="--urls http://0.0.0.0:5077",WorkingDirectory=System.IO.Path.GetDirectoryName(exe)!,UseShellExecute=false,CreateNoWindow=true})
-                    ?? throw new Exception("Server se nepodařilo spustit.");
+                    ?? throw new Exception(UiText.Get("Server se nepodařilo spustit."));
             }
             var endpoint=new Uri(address.ToString().TrimEnd('/')+"/ride");
             var hub=new HubConnectionBuilder().WithUrl(endpoint).Build();
             connection=hub;
             hub.On<SharedRider>("RiderUpdated",r=>Dispatcher.BeginInvoke(()=>updateRider(r)));
             hub.On<string>("RiderLeft",id=>Dispatcher.BeginInvoke(()=>removeRider(id)));
-            hub.Closed+=ex=>{Dispatcher.BeginInvoke(async ()=>{if(!ReferenceEquals(connection,hub))return;await DisconnectCore();stateText.Text=ex==null?"Spojení ukončeno.":"Spojení se přerušilo.";hostButton.IsEnabled=remoteHostButton.IsEnabled=joinButton.IsEnabled=true;disconnectButton.IsEnabled=false;});return Task.CompletedTask;};
+            hub.Closed+=ex=>{Dispatcher.BeginInvoke(async ()=>{if(!ReferenceEquals(connection,hub))return;await DisconnectCore();stateText.Text=ex==null?UiText.Get("Spojení ukončeno."):UiText.Get("Spojení se přerušilo.");hostButton.IsEnabled=remoteHostButton.IsEnabled=joinButton.IsEnabled=true;disconnectButton.IsEnabled=false;});return Task.CompletedTask;};
             if(localHost){
                 Exception? last=null;
                 for(int attempt=0;attempt<20;attempt++){
-                    if(server==null || server.HasExited)throw new Exception("Server nelze spustit. Port 5077 může být obsazen.");
+                    if(server==null || server.HasExited)throw new Exception(UiText.Get("Server nelze spustit. Port 5077 může být obsazen."));
                     try{await hub.StartAsync();last=null;break;}catch(Exception ex){last=ex;await Task.Delay(250);}
                 }
                 if(last!=null)throw last;
             }else await hub.StartAsync();
             await hub.InvokeAsync("Join",room,routeHash,name,create);
             roomBox.Text=room;disconnectButton.IsEnabled=true;connected();
-            stateText.Text=localHost?"Místnost vytvořena. Pošli kamarádovi kód a svou VPN adresu s portem 5077.":create?"Místnost vytvořena. Pošli kamarádovi adresu serveru a kód.":"Připojeno ke společné jízdě.";
+            stateText.Text=localHost?UiText.Get("Místnost vytvořena. Pošli kamarádovi kód a svou VPN adresu s portem 5077."):create?UiText.Get("Místnost vytvořena. Pošli kamarádovi adresu serveru a kód."):UiText.Get("Připojeno ke společné jízdě.");
         }catch(Exception ex){
             await DisconnectCore();
-            stateText.Text="Připojení selhalo: "+ex.Message;
+            stateText.Text=UiText.Get("Připojení selhalo: ")+ex.Message;
         }finally{connecting=false;hostButton.IsEnabled=remoteHostButton.IsEnabled=joinButton.IsEnabled=!Connected;}
     }
     bool sending,pendingUpdate;
@@ -124,7 +124,7 @@ internal sealed class SharedRideWindow : SuitoDialog
     }
     public async Task Disconnect()
     {
-        await DisconnectCore();stateText.Text="Odpojeno.";hostButton.IsEnabled=remoteHostButton.IsEnabled=joinButton.IsEnabled=true;disconnectButton.IsEnabled=false;
+        await DisconnectCore();stateText.Text=UiText.Get("Odpojeno.");hostButton.IsEnabled=remoteHostButton.IsEnabled=joinButton.IsEnabled=true;disconnectButton.IsEnabled=false;
     }
     async Task DisconnectCore()
     {

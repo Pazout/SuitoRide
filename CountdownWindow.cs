@@ -14,7 +14,7 @@ internal sealed class CountdownWindow : Window
     public CountdownWindow(int initialSeconds,Action cancelCountdown)
     {
         cancel=cancelCountdown;
-        Title="Příprava na jízdu";
+        Title=UiText.Get("Příprava na jízdu");
         WindowStyle=WindowStyle.None;
         AllowsTransparency=true;
         ResizeMode=ResizeMode.NoResize;
@@ -29,13 +29,13 @@ internal sealed class CountdownWindow : Window
         layout.RowDefinitions.Add(new RowDefinition { Height=new GridLength(1,GridUnitType.Star) });
         layout.RowDefinitions.Add(new RowDefinition { Height=GridLength.Auto });
         var center=new StackPanel { VerticalAlignment=VerticalAlignment.Center, HorizontalAlignment=HorizontalAlignment.Center };
-        center.Children.Add(new TextBlock { Text="PŘIPRAV SE NA JÍZDU", FontSize=28, FontWeight=FontWeights.SemiBold, Foreground=new SolidColorBrush(Color.FromRgb(150,215,197)), HorizontalAlignment=HorizontalAlignment.Center });
+        center.Children.Add(new TextBlock { Text=UiText.Get("PŘIPRAV SE NA JÍZDU"), FontSize=28, FontWeight=FontWeights.SemiBold, Foreground=new SolidColorBrush(Color.FromRgb(150,215,197)), HorizontalAlignment=HorizontalAlignment.Center });
         number=new TextBlock { Text=initialSeconds.ToString(), FontSize=230, FontWeight=FontWeights.Bold, HorizontalAlignment=HorizontalAlignment.Center, TextAlignment=TextAlignment.Center };
         center.Children.Add(new Viewbox { Stretch=Stretch.Uniform, MaxHeight=320, Child=number });
-        center.Children.Add(new TextBlock { Text="sekund do startu", FontSize=24, HorizontalAlignment=HorizontalAlignment.Center });
+        center.Children.Add(new TextBlock { Text=UiText.Get("sekund do startu"), FontSize=24, HorizontalAlignment=HorizontalAlignment.Center });
         Grid.SetRow(center,0);layout.Children.Add(center);
 
-        var button=new Button { Content="Zrušit odpočet", Padding=new Thickness(28,14,28,14), FontSize=18,
+        var button=new Button { Content=UiText.Get("Zrušit odpočet"), Padding=new Thickness(28,14,28,14), FontSize=18,
             HorizontalAlignment=HorizontalAlignment.Center, Margin=new Thickness(0,0,0,32),
             Style=(Style)Application.Current.FindResource("HighContrastButton") };
         button.Click+=(_,_)=>cancel();

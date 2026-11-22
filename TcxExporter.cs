@@ -11,7 +11,7 @@ internal static class TcxExporter
     public static byte[] Create(RideRecord ride)
     {
         if(ride.DurationSeconds<=0 || ride.DistanceMeters<0 || !double.IsFinite(ride.DurationSeconds) || !double.IsFinite(ride.DistanceMeters))
-            throw new InvalidDataException("Jízda nemá platný čas nebo vzdálenost.");
+            throw new InvalidDataException(UiText.Get("Jízda nemá platný čas nebo vzdálenost."));
         XNamespace tcx="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2";
         XNamespace ext="http://www.garmin.com/xmlschemas/ActivityExtension/v2";
         string Number(double value)=>XmlConvert.ToString(value);

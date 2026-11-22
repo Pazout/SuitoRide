@@ -10,7 +10,9 @@ public sealed record RideRecord(
     Guid Id, DateTimeOffset StartedAt, string RouteName, string Result,
     double DurationSeconds, double DistanceMeters, double? AveragePowerWatts, IReadOnlyList<RideSample>? Samples = null, string? RoutePath = null)
 {
-    public string DateDisplay => StartedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm");
+    public string DateDisplay => StartedAt.ToLocalTime().ToString("g");
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string ResultDisplay => UiText.Get(Result);
     public string DurationDisplay => $"{(long)(DurationSeconds/3600):D2}:{(int)(DurationSeconds/60)%60:D2}:{(int)DurationSeconds%60:D2}";
     public string DistanceDisplay => $"{DistanceMeters / 1000:F2} km";
     public string AverageSpeedDisplay => DurationSeconds > 0 ? $"{DistanceMeters / DurationSeconds * 3.6:F1} km/h" : "—";

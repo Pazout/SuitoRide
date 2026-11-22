@@ -23,27 +23,27 @@ internal sealed class RouteEditWindow : SuitoDialog
     public RouteEditWindow(double lengthMeters, IReadOnlyList<(double Distance,double Elevation)> profilePoints)
     {
         totalDistance=lengthMeters;points=profilePoints;
-        Title="Upravit trasu"; Width=680; Height=490; MinWidth=520; MinHeight=470;
+        Title=UiText.Get("Upravit trasu"); Width=680; Height=490; MinWidth=520; MinHeight=470;
         WindowStartupLocation=WindowStartupLocation.CenterOwner;
         var panel=new StackPanel { Margin=new Thickness(20) };
-        panel.Children.Add(new TextBlock { Text="Přetáhni značky na výškovém profilu nebo použij posuvníky.", TextWrapping=TextWrapping.Wrap, Margin=new Thickness(0,0,0,8) });
+        panel.Children.Add(new TextBlock { Text=UiText.Get("Přetáhni značky na výškovém profilu nebo použij posuvníky."), TextWrapping=TextWrapping.Wrap, Margin=new Thickness(0,0,0,8) });
         profile=new Canvas { Height=140, Background=new SolidColorBrush(Color.FromRgb(28,44,56)), ClipToBounds=true, Cursor=Cursors.SizeWE, Margin=new Thickness(0,0,0,12) };
         panel.Children.Add(profile);
-        panel.Children.Add(new TextBlock { Text="Levý okraj úseku" });
+        panel.Children.Add(new TextBlock { Text=UiText.Get("Levý okraj úseku") });
         start=new Slider { Minimum=0, Maximum=lengthMeters, Value=0, Margin=new Thickness(0,0,0,8) };
         panel.Children.Add(start);
-        panel.Children.Add(new TextBlock { Text="Pravý okraj úseku" });
+        panel.Children.Add(new TextBlock { Text=UiText.Get("Pravý okraj úseku") });
         end=new Slider { Minimum=0, Maximum=lengthMeters, Value=lengthMeters, Margin=new Thickness(0,0,0,8) };
         panel.Children.Add(end);
         description=new TextBlock { Margin=new Thickness(0,0,0,8), TextWrapping=TextWrapping.Wrap };
         panel.Children.Add(description);
-        reverse=new CheckBox { Content="Obrátit směr vybraného úseku", Margin=new Thickness(0,0,0,12) };
+        reverse=new CheckBox { Content=UiText.Get("Obrátit směr vybraného úseku"), Margin=new Thickness(0,0,0,12) };
         panel.Children.Add(reverse);
         var buttons=new StackPanel { Orientation=Orientation.Horizontal, HorizontalAlignment=HorizontalAlignment.Right };
-        var cancel=new Button { Content="Zrušit", MinWidth=95, Margin=new Thickness(0,0,8,0), IsCancel=true };
-        var apply=new Button { Content="Použít úsek", MinWidth=105, IsDefault=true };
+        var cancel=new Button { Content=UiText.Get("Zrušit"), MinWidth=95, Margin=new Thickness(0,0,8,0), IsCancel=true };
+        var apply=new Button { Content=UiText.Get("Použít úsek"), MinWidth=105, IsDefault=true };
         apply.Click+=(_,_)=>{
-            if(EndMeters-StartMeters<10) { MessageBox.Show(this,"Cíl musí být alespoň 10 metrů za začátkem výběru.","Upravit trasu",MessageBoxButton.OK,MessageBoxImage.Information);return; }
+            if(EndMeters-StartMeters<10) { MessageBox.Show(this,UiText.Get("Cíl musí být alespoň 10 metrů za začátkem výběru."),UiText.Get("Upravit trasu"),MessageBoxButton.OK,MessageBoxImage.Information);return; }
             DialogResult=true;
         };
         buttons.Children.Add(cancel);buttons.Children.Add(apply);panel.Children.Add(buttons);
@@ -60,7 +60,7 @@ internal sealed class RouteEditWindow : SuitoDialog
     void UpdateDescription()
     {
         double from=Reverse?EndMeters:StartMeters,to=Reverse?StartMeters:EndMeters;
-        description.Text=$"Start: {from/1000:F2} km    Cíl: {to/1000:F2} km    Délka: {Math.Max(0,EndMeters-StartMeters)/1000:F2} km";
+        description.Text=UiText.Format($"Start: {from/1000:F2} km    Cíl: {to/1000:F2} km    Délka: {Math.Max(0,EndMeters-StartMeters)/1000:F2} km");
         DrawProfile();
     }
     double Coordinate(double distance) => 10+(profile.ActualWidth-20)*distance/totalDistance;
@@ -94,8 +94,8 @@ internal sealed class RouteEditWindow : SuitoDialog
         var line=new Polyline { Stroke=Brushes.MediumAquamarine,StrokeThickness=2,IsHitTestVisible=false };
         foreach(var p in points)line.Points.Add(new Point(Coordinate(p.Distance),18+(height-32)*(1-(p.Elevation-min)/span)));
         profile.Children.Add(line);
-        AddMarker(left,Reverse?"CÍL":"START",Brushes.Gold,height,width);
-        AddMarker(right,Reverse?"START":"CÍL",Brushes.White,height,width);
+        AddMarker(left,Reverse?UiText.Get("CÍL"):"START",Brushes.Gold,height,width);
+        AddMarker(right,Reverse?"START":UiText.Get("CÍL"),Brushes.White,height,width);
     }
     void AddMarker(double x,string label,Brush brush,double height,double width)
     {

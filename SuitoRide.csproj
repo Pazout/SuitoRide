@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <Version>0.2.10</Version>
+    <Version>0.2.11</Version>
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -15,6 +15,7 @@
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" />
   </ItemGroup>
 
+  <ItemGroup><EmbeddedResource Include="Localization/*.json"/></ItemGroup>
   <ItemGroup><Content Include="map\**"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content></ItemGroup>
   <ItemGroup><Resource Include="Assets\SuitoRide.ico" /></ItemGroup>
   <ItemGroup><Compile Remove="SpolecnaJizda.Server\**\*.cs" /><None Remove="SpolecnaJizda.Server\**" /><Content Remove="SpolecnaJizda.Server\**" /></ItemGroup>

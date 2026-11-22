@@ -43,9 +43,9 @@ internal sealed class StravaService
     }
     StravaCredentials LoadCredentials()
     {
-        if(!File.Exists(AuthPath))throw new InvalidOperationException("Nejprve propoj účet Strava.");
+        if(!File.Exists(AuthPath))throw new InvalidOperationException(UiText.Get("Nejprve propoj účet Strava."));
         byte[] plain=ProtectedData.Unprotect(File.ReadAllBytes(AuthPath),null,DataProtectionScope.CurrentUser);
-        try{return JsonSerializer.Deserialize<StravaCredentials>(plain,JsonOptions) ?? throw new InvalidDataException("Uložené přihlášení je neplatné.");}
+        try{return JsonSerializer.Deserialize<StravaCredentials>(plain,JsonOptions) ?? throw new InvalidDataException(UiText.Get("Uložené přihlášení je neplatné."));}
         finally{CryptographicOperations.ZeroMemory(plain);}
     }
     public void Forget() { if(File.Exists(AuthPath))File.Delete(AuthPath); }
@@ -58,7 +58,7 @@ internal sealed class StravaService
     {
         clientId=clientId.Trim();secret=secret.Trim();
         if(!long.TryParse(clientId,out long id)||id<=0 || string.IsNullOrWhiteSpace(secret))
-            throw new ArgumentException("Zadej platné Client ID a Client Secret ze Stravy.");
+            throw new ArgumentException(UiText.Get("Zadej platné Client ID a Client Secret ze Stravy."));
         string state=Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         int port=FreePort();string callback=$"http://127.0.0.1:{port}/callback/";
         using var listener=new HttpListener();
@@ -75,19 +75,19 @@ internal sealed class StravaService
             var query=context.Request.QueryString;
             bool valid=string.Equals(query["state"],state,StringComparison.Ordinal);
             string? code=query["code"],scope=query["scope"],error=query["error"];
-            string response=valid ? "Odpověď byla přijata. Vrať se do aplikace Suito Ride." : "Neplatná odpověď. Vrať se do aplikace.";
+            string response=valid ? UiText.Get("Odpověď byla přijata. Vrať se do aplikace Suito Ride.") : UiText.Get("Neplatná odpověď. Vrať se do aplikace.");
             byte[] body=Encoding.UTF8.GetBytes(response);
             context.Response.StatusCode=valid?200:400;context.Response.ContentType="text/plain; charset=utf-8";
             context.Response.ContentLength64=body.Length;
             try{await context.Response.OutputStream.WriteAsync(body,timeout.Token);}finally{context.Response.Close();}
             if(!valid)continue;
-            if(error!=null)throw new InvalidOperationException("Přístup ke Stravě nebyl povolen.");
+            if(error!=null)throw new InvalidOperationException(UiText.Get("Přístup ke Stravě nebyl povolen."));
             if(string.IsNullOrEmpty(code) || !(scope??"").Split(',', ' ').Contains("activity:write"))
-                throw new InvalidOperationException("Strava neudělila oprávnění k zápisu aktivit.");
+                throw new InvalidOperationException(UiText.Get("Strava neudělila oprávnění k zápisu aktivit."));
             using var form=new FormUrlEncodedContent(new Dictionary<string,string>{
                 ["client_id"]=clientId,["client_secret"]=secret,["code"]=code,["grant_type"]="authorization_code"});
             using var result=await http.PostAsync("https://www.strava.com/oauth/token",form,timeout.Token);
-            if(!result.IsSuccessStatusCode)throw new InvalidOperationException($"Strava nepřijala propojení (HTTP {(int)result.StatusCode}).");
+            if(!result.IsSuccessStatusCode)throw new InvalidOperationException(UiText.Format($"Strava nepřijala propojení (HTTP {(int)result.StatusCode})."));
             using var json=JsonDocument.Parse(await result.Content.ReadAsStringAsync(timeout.Token));
             var root=json.RootElement;
             long athlete=root.GetProperty("athlete").GetProperty("id").GetInt64();
@@ -105,7 +105,7 @@ internal sealed class StravaService
             ["client_id"]=auth.ClientId,["client_secret"]=auth.ClientSecret,
             ["refresh_token"]=auth.RefreshToken,["grant_type"]="refresh_token"});
         using var result=await http.PostAsync("https://www.strava.com/oauth/token",form,token);
-        if(!result.IsSuccessStatusCode)throw new InvalidOperationException($"Strava neobnovila přístup (HTTP {(int)result.StatusCode}). Zkus účet znovu propojit.");
+        if(!result.IsSuccessStatusCode)throw new InvalidOperationException(UiText.Format($"Strava neobnovila přístup (HTTP {(int)result.StatusCode}). Zkus účet znovu propojit."));
         using var json=JsonDocument.Parse(await result.Content.ReadAsStringAsync(token));var root=json.RootElement;
         auth=auth with{AccessToken=root.GetProperty("access_token").GetString()!,RefreshToken=root.GetProperty("refresh_token").GetString()!,ExpiresAt=root.GetProperty("expires_at").GetInt64()};
         SaveCredentials(auth);
@@ -126,7 +126,7 @@ internal sealed class StravaService
             var receipt=GetReceipt(auth.AthleteId,ride.Id);
             if(receipt?.ActivityId is long existing)return existing;
             if(receipt?.State=="sending")
-                throw new InvalidOperationException("Výsledek předchozího odeslání není známý. Nejdřív ověř aktivitu ve Stravě, aby nevznikla duplicita.");
+                throw new InvalidOperationException(UiText.Get("Výsledek předchozího odeslání není známý. Nejdřív ověř aktivitu ve Stravě, aby nevznikla duplicita."));
             long uploadId;
             if(receipt?.UploadId is long pending)uploadId=pending;
             else {
@@ -145,14 +145,14 @@ internal sealed class StravaService
                 HttpResponseMessage result;
                 try{result=await http.SendAsync(request,token);}
                 catch(Exception ex) when(ex is HttpRequestException or OperationCanceledException)
-                {throw new InvalidOperationException("Nepodařilo se ověřit výsledek odeslání. Nejdřív zkontroluj Stravu, než jízdu odešleš znovu.",ex);}
+                {throw new InvalidOperationException(UiText.Get("Nepodařilo se ověřit výsledek odeslání. Nejdřív zkontroluj Stravu, než jízdu odešleš znovu."),ex);}
                 using(result)
                 {
                     if(!result.IsSuccessStatusCode)
                     {
                         if((int)result.StatusCode>=400 && (int)result.StatusCode<500 && result.StatusCode!=HttpStatusCode.Conflict)
                             File.Delete(ReceiptPath(auth.AthleteId,ride.Id));
-                        throw new InvalidOperationException($"Strava nahrání nepřijala (HTTP {(int)result.StatusCode}).");
+                        throw new InvalidOperationException(UiText.Format($"Strava nahrání nepřijala (HTTP {(int)result.StatusCode})."));
                     }
                     using var json=JsonDocument.Parse(await result.Content.ReadAsStringAsync(token));
                     uploadId=json.RootElement.GetProperty("id").GetInt64();
@@ -164,7 +164,7 @@ internal sealed class StravaService
                 using var request=new HttpRequestMessage(HttpMethod.Get,$"https://www.strava.com/api/v3/uploads/{uploadId}");
                 request.Headers.Authorization=new AuthenticationHeaderValue("Bearer",auth.AccessToken);
                 using var response=await http.SendAsync(request,token);
-                if(!response.IsSuccessStatusCode)throw new InvalidOperationException($"Stav nahrávání nelze ověřit (HTTP {(int)response.StatusCode}).");
+                if(!response.IsSuccessStatusCode)throw new InvalidOperationException(UiText.Format($"Stav nahrávání nelze ověřit (HTTP {(int)response.StatusCode})."));
                 using var json=JsonDocument.Parse(await response.Content.ReadAsStringAsync(token));
                 var root=json.RootElement;
                 if(root.TryGetProperty("activity_id",out var a)&&a.ValueKind==JsonValueKind.Number)
@@ -172,10 +172,10 @@ internal sealed class StravaService
                     long activity=a.GetInt64();SetReceipt(auth.AthleteId,ride.Id,new("complete",uploadId,activity));return activity;
                 }
                 if(root.TryGetProperty("error",out var error)&&error.ValueKind==JsonValueKind.String&&!string.IsNullOrWhiteSpace(error.GetString()))
-                    throw new InvalidOperationException("Strava aktivitu nezpracovala: "+error.GetString());
+                    throw new InvalidOperationException(UiText.Get("Strava aktivitu nezpracovala: ")+error.GetString());
                 await Task.Delay(1000,token);
             }
-            throw new InvalidOperationException("Strava jízdu ještě zpracovává. Stav můžeš ověřit opětovným stiskem tlačítka.");
+            throw new InvalidOperationException(UiText.Get("Strava jízdu ještě zpracovává. Stav můžeš ověřit opětovným stiskem tlačítka."));
         }finally{operation.Release();}
     }
 }
