@@ -19,6 +19,7 @@
       <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left">
         <StackPanel Orientation="Horizontal">
           <Button Content="{local:Ui 'Vybrat složku tras'}" Click="ChooseFolder"/>
+          <Button Content="Dropbox" Click="ShowDropboxSettings" ToolTip="{local:Ui 'Složky Dropboxu'}"/>
           <Button Content="{local:Ui 'Obnovit katalog'}" Click="RefreshCatalog"/>
           <ComboBox x:Name="Catalog" SelectionChanged="CatalogSelectionChanged" Width="300" Margin="0,0,6,4" HorizontalContentAlignment="Stretch">
             <ComboBox.ItemTemplate>

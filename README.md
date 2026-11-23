@@ -19,9 +19,15 @@ Na výškovém profilu lze vybrat nový začátek a cíl, obrátit směr a ulož
 
 Přes **Hrudní pás** připojíš snímač s Bluetooth LE Heart Rate Service. Aktuální tep je vidět v přehledu jízdy. Naměřené hodnoty se ukládají do historie skutečné jízdy a do exportu TCX, který aplikace používá i při odesílání na Stravu a přes FitnessSyncer. Poslední úspěšně připojený pás si aplikace zapamatuje. Při příštím spuštění aplikace se pokusí pás vyhledat a připojit. Automatické vyhledávání pásu i trenažéru běží nejvýš pět minut. Ruční vyhledání nebo připojení zruší automatický pokus pro dané zařízení jen v aktuálním spuštění aplikace.
 
+## Dropbox
+
+Tlačítko **Dropbox** u katalogu tras umožňuje vybrat místní složku s GPX a samostatnou složku pro automatické ukládání TCX. Po uložení skutečné jízdy do historie se její TCX zkopíruje do zvoleného umístění. Synchronizaci na účet provádí aplikace Dropbox ve Windows.
+
 ## Historie a sdílení
 
-Skutečné jízdy se ukládají do historie. Vybranou jízdu lze exportovat jako TCX nebo ručně odeslat na Stravu či do FitnessSynceru. FitnessSyncer ji může předat do Suunto, pokud je tento cíl v účtu nastavený. Ukázkové jízdy se do historie neukládají.
+Skutečné jízdy se ukládají do historie. Vybranou jízdu lze exportovat jako TCX nebo ručně odeslat na Stravu, do FitnessSynceru nebo na Intervals.icu. FitnessSyncer ji může předat do Suunto, pokud je tento cíl v účtu nastavený. Ukázkové jízdy se do historie neukládají.
+
+Před odesláním na Stravu nebo Intervals.icu lze upravit název a přidat popis. Pro Intervals.icu otevři v historii **Nastavit Intervals.icu** a zadej osobní API klíč ze sekce **Developer Settings** ve svém [účtu Intervals.icu](https://intervals.icu/settings). Potom vyber jízdu a klikni na **Odeslat na Intervals.icu**. Nově nahranou aktivitu aplikace označí jako virtuální jízdu.
 
 Pro společnou jízdu použijte shodnou GPX trasu včetně směru a vybraného úseku. Hostitel může použít přiložený server na portu TCP 5077 v důvěryhodné místní nebo soukromé VPN síti. Ostatní zadají jeho adresu a kód místnosti. Každý jezdec spouští a ovládá vlastní jízdu; v aplikaci vidíte vzájemnou polohu.
 

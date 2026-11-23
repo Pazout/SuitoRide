@@ -118,7 +118,7 @@ internal sealed class StravaService
         return File.Exists(path)?JsonSerializer.Deserialize<StravaReceipt>(File.ReadAllText(path),JsonOptions):null;
     }
     void SetReceipt(long athlete,Guid ride,StravaReceipt receipt)=>WriteAtomic(ReceiptPath(athlete,ride),JsonSerializer.SerializeToUtf8Bytes(receipt));
-    public async Task<long> SendAsync(RideRecord ride,CancellationToken token)
+    public async Task<long> SendAsync(RideRecord ride, string name, string? description, CancellationToken token)
     {
         await operation.WaitAsync(token);
         try {
@@ -136,7 +136,8 @@ internal sealed class StravaService
                 form.Add(new StringContent("tcx"),"data_type");
                 form.Add(new StringContent("VirtualRide"),"sport_type");
                 form.Add(new StringContent("1"),"trainer");
-                form.Add(new StringContent($"Suito Ride: {ride.RouteName}"),"name");
+                form.Add(new StringContent(name), "name");
+                if (!string.IsNullOrWhiteSpace(description)) form.Add(new StringContent(description), "description");
                 form.Add(new StringContent($"suitoride-{ride.Id:N}"),"external_id");
                 using var request=new HttpRequestMessage(HttpMethod.Post,"https://www.strava.com/api/v3/uploads");
                 request.Headers.Authorization=new AuthenticationHeaderValue("Bearer",auth.AccessToken);

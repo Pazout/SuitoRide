@@ -509,11 +509,20 @@ public partial class MainWindow : Window
     {
         var dlg=new OpenFolderDialog{Title=UiText.Get("Vyberte složku s GPX trasami"),Multiselect=false};
         if(dlg.ShowDialog()!=true)return;
-        catalogFolder=dlg.FolderName;
-        try{Directory.CreateDirectory(System.IO.Path.GetDirectoryName(settingsFile)!);File.WriteAllText(settingsFile,catalogFolder);}
-        catch(Exception ex){CatalogInfo.Text=UiText.Get("Složku nelze uložit: ")+ex.Message;return;}
+        try { SetCatalogFolder(dlg.FolderName); }
+        catch(Exception ex) { CatalogInfo.Text=UiText.Get("Složku nelze uložit: ")+ex.Message; }
+    }
+    void SetCatalogFolder(string folder)
+    {
+        Directory.CreateDirectory(System.IO.Path.GetDirectoryName(settingsFile)!);
+        File.WriteAllText(settingsFile, folder);
+        catalogFolder = folder;
         RefreshCatalogCore();
     }
+
+    void ShowDropboxSettings(object sender, RoutedEventArgs e) =>
+        new DropboxSettingsWindow(catalogFolder, dropboxArchive, SetCatalogFolder) { Owner = this }.ShowDialog();
+
     void RefreshCatalog(object s,RoutedEventArgs e)=>RefreshCatalogCore();
     void RefreshCatalogCore()
     {
@@ -828,6 +837,7 @@ public partial class MainWindow : Window
         }
     }
     readonly RideHistoryStore historyStore=new();
+    readonly DropboxRideArchive dropboxArchive = new();
     RideSession? session;
     RideRecord? pendingRide;
     double? currentPower, currentCadence;
@@ -840,10 +850,8 @@ public partial class MainWindow : Window
         session=null;
         if(record.DistanceMeters<0.1)return "";
         pendingRide=record;
-        try {
-            historyStore.Save(record); pendingRide=null; RetrySaveButton.Visibility=Visibility.Collapsed;RefreshCompletedRideCounts();
-            return UiText.Get(" Jízda uložena do historie.");
-        } catch(Exception) {
+        try { return " " + SaveRideToHistory(record); }
+        catch(Exception) {
             RetrySaveButton.Visibility=Visibility.Visible;
             return UiText.Get(" Jízdu se nepodařilo uložit. Použij tlačítko Uložit čekající jízdu.");
         }
@@ -851,9 +859,28 @@ public partial class MainWindow : Window
     void RetrySaveRide(object s,RoutedEventArgs e)
     {
         if(pendingRide==null)return;
-        try { historyStore.Save(pendingRide);pendingRide=null;RetrySaveButton.Visibility=Visibility.Collapsed;RefreshCompletedRideCounts();Status.Text=UiText.Get("Jízda uložena do historie."); }
+        try { Status.Text = SaveRideToHistory(pendingRide); }
         catch(Exception ex) { Status.Text=UiText.Get("Jízdu nelze uložit: ")+ex.Message; }
     }
+    string SaveRideToHistory(RideRecord ride)
+    {
+        historyStore.Save(ride);
+        pendingRide = null;
+        RetrySaveButton.Visibility = Visibility.Collapsed;
+        RefreshCompletedRideCounts();
+
+        string status = UiText.Get("Jízda uložena do historie.");
+        try
+        {
+            if (dropboxArchive.Export(ride)) status += " " + UiText.Get("Kopie TCX uložena do složky Dropboxu.");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            status += " " + UiText.Get("Kopii do složky Dropboxu se nepodařilo uložit: ") + ex.Message;
+        }
+        return status;
+    }
+
     void ShowHistory(object s,RoutedEventArgs e) => new HistoryWindow(historyStore) { Owner=this }.ShowDialog();
     void HandleClosing(object? sender,System.ComponentModel.CancelEventArgs e)
     {

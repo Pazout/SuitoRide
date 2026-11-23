@@ -10,9 +10,10 @@ internal sealed class HistoryWindow : SuitoDialog
     readonly RideHistoryStore store;
     readonly StravaService strava=new();
     readonly FitnessSyncerService fitnessSyncer=new();
+    readonly IntervalsIcuService intervals = new();
     readonly DataGrid grid;
     readonly TextBlock summary,status;
-    readonly Button send,connect,forget,export,sendFitness,connectFitness;
+    readonly Button send,connect,forget,export,sendFitness,connectFitness,sendIntervals,connectIntervals;
     public HistoryWindow(RideHistoryStore store)
     {
         this.store=store;
@@ -30,6 +31,10 @@ internal sealed class HistoryWindow : SuitoDialog
         connectFitness=new Button{Content=UiText.Get("Nastavit FitnessSyncer"),Padding=new Thickness(9,5,9,5),Margin=new Thickness(0,0,8,5)};
         sendFitness=new Button{Content=UiText.Get("Odeslat přes FitnessSyncer"),Padding=new Thickness(9,5,9,5),Margin=new Thickness(0,0,8,5)};
         actions.Children.Add(connectFitness);actions.Children.Add(sendFitness);
+        connectIntervals = new Button { Content = UiText.Get("Nastavit Intervals.icu"), Padding = new Thickness(9, 5, 9, 5), Margin = new Thickness(0, 0, 8, 5) };
+        sendIntervals = new Button { Content = UiText.Get("Odeslat na Intervals.icu"), Padding = new Thickness(9, 5, 9, 5), Margin = new Thickness(0, 0, 8, 5) };
+        actions.Children.Add(connectIntervals);
+        actions.Children.Add(sendIntervals);
         DockPanel.SetDock(actions,Dock.Top);panel.Children.Add(actions);
         status=new TextBlock{TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,0,0,8)};
         DockPanel.SetDock(status,Dock.Top);panel.Children.Add(status);
@@ -54,11 +59,18 @@ internal sealed class HistoryWindow : SuitoDialog
         send.Click+=SendRide;export.Click+=ExportRide;
         connectFitness.Click+=(_,_)=>{new FitnessSyncerConnectWindow(fitnessSyncer){Owner=this}.ShowDialog();RefreshStatus();};
         sendFitness.Click+=SendFitnessRide;
+        connectIntervals.Click += (_, _) =>
+        {
+            new IntervalsIcuConnectWindow(intervals) { Owner = this }.ShowDialog();
+            RefreshStatus();
+        };
+        sendIntervals.Click += SendIntervalsRide;
         RefreshStatus();
     }
     void RefreshStatus()=>status.Text=
         (strava.IsConnected ? UiText.Get("Strava připojena.") : UiText.Get("Strava nepřipojena.")) + "  " +
-        (fitnessSyncer.IsConnected ? UiText.Get("FitnessSyncer připojen.") : UiText.Get("FitnessSyncer nepřipojen."));
+        (fitnessSyncer.IsConnected ? UiText.Get("FitnessSyncer připojen.") : UiText.Get("FitnessSyncer nepřipojen.")) + "  " +
+        (intervals.IsConnected ? UiText.Get("Intervals.icu připojen.") : UiText.Get("Intervals.icu nepřipojen."));
     async void SendFitnessRide(object sender,RoutedEventArgs e)
     {
         if(grid.SelectedItem is not RideRecord ride){status.Text=UiText.Get("Nejprve vyber jízdu.");return;}
@@ -73,8 +85,32 @@ internal sealed class HistoryWindow : SuitoDialog
         catch(Exception ex){status.Text=UiText.Get("Jízdu nelze odeslat: ")+ex.Message;}
         finally{SetActionsEnabled(true);}
     }
+    async void SendIntervalsRide(object sender, RoutedEventArgs e)
+    {
+        if (grid.SelectedItem is not RideRecord ride) { status.Text = UiText.Get("Nejprve vyber jízdu."); return; }
+        if (!intervals.IsConnected) { status.Text = UiText.Get("Nejprve nastav přístup k Intervals.icu."); return; }
+
+        var details = new RideUploadWindow(UiText.Get("Odeslat na Intervals.icu"), ride) { Owner = this };
+        if (details.ShowDialog() != true) return;
+
+        SetActionsEnabled(false);
+        status.Text = UiText.Get("Odesílám jízdu na Intervals.icu…");
+        try
+        {
+            var result = await intervals.UploadAsync(ride, details.ActivityName, details.Description);
+            status.Text = result.Status switch
+            {
+                IntervalsIcuService.UploadStatus.Uploaded => UiText.Format($"Jízda je na Intervals.icu uložená jako virtuální jízda ({result.ActivityId})."),
+                IntervalsIcuService.UploadStatus.Duplicate => UiText.Get("Tato jízda už na Intervals.icu existuje."),
+                _ => UiText.Get("Jízda je na Intervals.icu uložená. Nastavení typu virtuální jízdy se nepodařilo potvrdit.")
+            };
+        }
+        catch (Exception ex) { status.Text = UiText.Get("Jízdu nelze odeslat: ") + ex.Message; }
+        finally { SetActionsEnabled(true); }
+    }
+
     void SetActionsEnabled(bool enabled) =>
-        send.IsEnabled=connect.IsEnabled=forget.IsEnabled=export.IsEnabled=sendFitness.IsEnabled=connectFitness.IsEnabled=enabled;
+        send.IsEnabled=connect.IsEnabled=forget.IsEnabled=export.IsEnabled=sendFitness.IsEnabled=connectFitness.IsEnabled=sendIntervals.IsEnabled=connectIntervals.IsEnabled=enabled;
     void ExportRide(object s,RoutedEventArgs e)
     {
         if(grid.SelectedItem is not RideRecord ride){status.Text=UiText.Get("Nejprve vyber jízdu.");return;}
@@ -87,10 +123,12 @@ internal sealed class HistoryWindow : SuitoDialog
     {
         if(grid.SelectedItem is not RideRecord ride){status.Text=UiText.Get("Nejprve vyber jízdu.");return;}
         if(!strava.IsConnected){status.Text=UiText.Get("Nejprve propoj účet Strava.");return;}
+        var details = new RideUploadWindow(UiText.Get("Odeslat vybranou jízdu na Stravu"), ride) { Owner = this };
+        if (details.ShowDialog() != true) return;
         SetActionsEnabled(false);
         status.Text=UiText.Get("Odesílám jízdu a čekám na zpracování ve Stravě…");
         try{
-            long id=await strava.SendAsync(ride,CancellationToken.None);
+            long id=await strava.SendAsync(ride, details.ActivityName, details.Description, CancellationToken.None);
             status.Text=UiText.Format($"Jízda je na Stravě uložená (aktivita {id}).");
         }catch(Exception ex){status.Text=UiText.Get("Jízdu nelze odeslat: ")+ex.Message;}
         finally{SetActionsEnabled(true);}
