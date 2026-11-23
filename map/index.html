@@ -27,8 +27,22 @@ else{
  let nav=null,navLoaded=false,navMode=false,panoramaVisible=false,navRoute=[],navPosition=null,navRider=null,navDisplay=null,navFrame=null;
  let riderName='',navRiderElement=null;
  const google3DOrigin='https://suitoride-3d.local';
+ const google3DRangeKey='suitoride.google3d.range';
+ let google3DRange;
+ try{
+  const storedRange=Number(localStorage.getItem(google3DRangeKey));
+  if(Number.isFinite(storedRange)&&storedRange>0)google3DRange=storedRange;
+ }catch{}
  const google3DWrap=document.getElementById('google3dwrap');
  let google3DFrame=null, google3DKey=null, latestGoogle3DPosition=null, pendingMainFit=false;
+
+ window.addEventListener('message',event=>{
+  if(!google3DFrame || event.source!==google3DFrame.contentWindow || event.origin!==google3DOrigin)return;
+  const message=event.data;
+  if(message?.type!=='google-3d-range'||!Number.isFinite(message.range)||message.range<=0||message.range===google3DRange)return;
+  google3DRange=message.range;
+  try{localStorage.setItem(google3DRangeKey,String(google3DRange));}catch{}
+ });
 
  function sendGoogle3D(message){
   google3DFrame?.contentWindow.postMessage(message,google3DOrigin);
@@ -42,7 +56,7 @@ else{
   frame.referrerPolicy='strict-origin-when-cross-origin';
   frame.addEventListener('load',()=>{
    if(google3DFrame!==frame)return;
-   sendGoogle3D({type:'init',key,points:navRoute,position:latestGoogle3DPosition,riderName});
+   sendGoogle3D({type:'init',key,points:navRoute,position:latestGoogle3DPosition,riderName,range:google3DRange});
   },{once:true});
   frame.src=google3DOrigin+'/google3d/index.html'+(globalThis.location?.search ?? '');
   google3DFrame=frame;
@@ -291,7 +305,7 @@ else{
    map.setBearing(0);if(follow)map.setView(rider.getLatLng(),15);else map.fitBounds(line.getBounds(),{padding:[25,25],maxZoom:16});applyHeading();updateOverview();updateNavPosition(false);notice.style.display='none';
   }else if(m.type==='position'&&rider){
    latestGoogle3DPosition=m;sendGoogle3D({type:'position',position:m});
-   heading=m.heading;navPosition={lat:m.lat,lon:m.lon};updateNavPosition(true);rider.setLatLng([m.lat,m.lon]);if(overviewRider)overviewRider.setLatLng([m.lat,m.lon]);applyHeading();if(follow)map.panTo([m.lat,m.lon],{animate:false});
+   heading=m.heading;navPosition={lat:m.lat,lon:m.lon};updateNavPosition(m.animate!==false);rider.setLatLng([m.lat,m.lon]);if(overviewRider)overviewRider.setLatLng([m.lat,m.lon]);applyHeading();if(follow)map.panTo([m.lat,m.lon],{animate:false});
   }else if(m.type==='rider-name'){
    riderName=m.name;
    updateMainRiderLabel();updateNavRiderLabel();

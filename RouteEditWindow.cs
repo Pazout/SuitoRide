@@ -12,7 +12,7 @@ internal sealed class RouteEditWindow : SuitoDialog
     readonly TextBlock description;
     readonly CheckBox reverse;
     readonly Canvas profile;
-    readonly IReadOnlyList<(double Distance,double Elevation)> points;
+    readonly ElevationProfile elevationProfile;
     readonly double totalDistance;
     bool dragging;
     bool dragLeft;
@@ -20,9 +20,10 @@ internal sealed class RouteEditWindow : SuitoDialog
     public double EndMeters => end.Value;
     public bool Reverse => reverse.IsChecked==true;
 
-    public RouteEditWindow(double lengthMeters, IReadOnlyList<(double Distance,double Elevation)> profilePoints)
+    public RouteEditWindow(double lengthMeters, ElevationProfile elevationProfile)
     {
-        totalDistance=lengthMeters;points=profilePoints;
+        totalDistance=lengthMeters;
+        this.elevationProfile=elevationProfile;
         Title=UiText.Get("Upravit trasu"); Width=680; Height=490; MinWidth=520; MinHeight=470;
         WindowStartupLocation=WindowStartupLocation.CenterOwner;
         var panel=new StackPanel { Margin=new Thickness(20) };
@@ -85,8 +86,9 @@ internal sealed class RouteEditWindow : SuitoDialog
     void DrawProfile()
     {
         profile.Children.Clear();
-        if(points.Count<2 || profile.ActualWidth<=20 || totalDistance<=0)return;
+        if(profile.ActualWidth<=20 || totalDistance<=0)return;
         double width=profile.ActualWidth,height=profile.ActualHeight;
+        var points=elevationProfile.Sample(0,totalDistance,width-20);
         double min=points.Min(p=>p.Elevation),max=points.Max(p=>p.Elevation),span=Math.Max(1,max-min);
         double left=Coordinate(StartMeters),right=Coordinate(EndMeters);
         var selected=new Rectangle { Width=Math.Max(0,right-left),Height=height,Fill=new SolidColorBrush(Color.FromArgb(50,60,210,170)),IsHitTestVisible=false };

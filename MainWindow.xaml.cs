@@ -18,6 +18,7 @@ public partial class MainWindow : Window
 {
     record Pt(double Lat,double Lon,double Ele,double D);
     readonly List<Pt> route=[];
+    ElevationProfile? elevationProfile;
     BluetoothDeviceChoice? selectedTrainer;
     BluetoothDeviceWindow? trainerDialog;
     readonly DispatcherTimer timer=new(){Interval=TimeSpan.FromSeconds(1)};
@@ -31,7 +32,7 @@ public partial class MainWindow : Window
     bool riding,demo,ticking;
     readonly Stopwatch rideClock=new();
     double rideStartDistance;
-    public MainWindow(){InitializeComponent();Language=System.Windows.Markup.XmlLanguage.GetLanguage(CultureInfo.CurrentCulture.IetfLanguageTag);Title=$"Suito Ride {typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.1.0"}";timer.Tick+=Tick;Closing+=HandleClosing;Loaded+=(_,_)=>{InitializeHeartRate();RestoreRiderName();InitMap();RestoreCatalog();RestoreLastRoute();RestorePanoramaSpacing();AutoStartPanorama();trainerRestoreTask=RestoreTrainerAsync();heartRateRestoreTask=RestoreHeartRateAsync();};Closed+=(_,_)=>{sharedRide?.Shutdown();trainerConnection?.Cancel();heartRateAttempt?.Cancel();DisconnectHeartRate();DisconnectCore();};}
+    public MainWindow(){InitializeComponent();InitializeProfileLegend();Language=System.Windows.Markup.XmlLanguage.GetLanguage(CultureInfo.CurrentCulture.IetfLanguageTag);Title=$"Suito Ride {typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.1.0"}";timer.Tick+=Tick;Closing+=HandleClosing;Loaded+=(_,_)=>{InitializeHeartRate();RestoreRiderName();InitMap();RestoreCatalog();RestoreLastRoute();RestorePanoramaSpacing();AutoStartPanorama();trainerRestoreTask=RestoreTrainerAsync();heartRateRestoreTask=RestoreHeartRateAsync();};Closed+=(_,_)=>{sharedRide?.Shutdown();trainerConnection?.Cancel();heartRateAttempt?.Cancel();DisconnectHeartRate();DisconnectCore();};}
     bool installingUpdate;
     async void CheckForUpdates(object sender,RoutedEventArgs e)
     {
@@ -114,7 +115,7 @@ public partial class MainWindow : Window
                 if(points.Count==0||d>points[^1].D+0.000001)points.Add(new(lat,lon,ele,d));
             }
             if(points.Count<2||points[^1].D<10)throw new Exception(UiText.Get("Trasa musí mít alespoň dva různé body s výškou."));
-            riding=false;timer.Stop();SetRideMode(false);route.Clear();route.AddRange(points);distance=0;
+            riding=false;timer.Stop();SetRideMode(false);SetRoute(points);distance=0;
             routeSourcePath=System.IO.Path.GetFullPath(path);
             routeHasUnsavedEdits=false;
             SyncCatalogSelection();
@@ -127,36 +128,55 @@ public partial class MainWindow : Window
             else MessageBox.Show(UiText.Get("GPX se nepodařilo načíst. Každý bod musí obsahovat výšku.\n")+ex.Message,UiText.Get("Načtení trasy"));
         }
     }
+    void SetRoute(List<Pt> points)
+    {
+        elevationProfile = new ElevationProfile(points.Select(p => (p.D, p.Ele)));
+        ClearProfilePreview();
+        ResetProfileTelemetry();
+        route.Clear();
+        route.AddRange(points);
+    }
     static double Dist(double a,double b,double c,double d){double r=Math.PI/180,x=(c-a)*r,y=(d-b)*r,h=Math.Pow(Math.Sin(x/2),2)+Math.Cos(a*r)*Math.Cos(c*r)*Math.Pow(Math.Sin(y/2),2);return 12742000*Math.Asin(Math.Sqrt(Math.Clamp(h,0,1)));}
     double Elev(double d){d=Math.Clamp(d,0,route[^1].D);int i=route.FindIndex(p=>p.D>=d);if(i<=0)return route[0].Ele;var a=route[i-1];var b=route[i];return a.Ele+(b.Ele-a.Ele)*(d-a.D)/(b.D-a.D);}
-    double Slope(){double a=Math.Max(0,distance-25),b=Math.Min(route[^1].D,distance+25);return b>a?Math.Clamp(100*(Elev(b)-Elev(a))/(b-a),-10,15):0;}
-    static Brush GradeBrush(double grade)=>grade< -3?Brushes.DodgerBlue:grade<0?Brushes.DeepSkyBlue:grade<3?Brushes.MediumAquamarine:grade<6?Brushes.Gold:grade<10?Brushes.DarkOrange:Brushes.OrangeRed;
+    double SlopeAt(double meters){double a=Math.Max(0,meters-25),b=Math.Min(route[^1].D,meters+25);return b>a?Math.Clamp(100*(Elev(b)-Elev(a))/(b-a),-10,15):0;}
     void DrawProfile(object? s,SizeChangedEventArgs? e)
     {
+        profilePositionMarker = null;
         DrawProfileRange(Profile,0,route.Count<2?0:route[^1].D);
+        DrawZoomProfile();
+    }
+    void DrawZoomProfile()
+    {
         if(route.Count<2){ZoomProfile.Children.Clear();return;}
-        double start=Math.Max(0,distance-30),end=Math.Min(route[^1].D,distance+500);
+        double meters = DisplayDistance;
+        double start=Math.Max(0,meters-30),end=Math.Min(route[^1].D,meters+500);
         if(end-start<1)start=Math.Max(0,end-100);
         DrawProfileRange(ZoomProfile,start,end);
     }
     void DrawProfileRange(System.Windows.Controls.Canvas canvas,double start,double end)
     {
         canvas.Children.Clear();
-        if(route.Count<2||canvas.ActualWidth<=0||canvas.ActualHeight<=0||end<=start)return;
-        var points=new List<(double D,double E)>{(start,Elev(start))};
-        points.AddRange(route.Where(p=>p.D>start&&p.D<end).Select(p=>(p.D,p.Ele)));
-        points.Add((end,Elev(end)));
-        double min=points.Min(p=>p.E),max=points.Max(p=>p.E),height=Math.Max(1,canvas.ActualHeight-12);
+        if(elevationProfile==null||canvas.ActualWidth<=0||canvas.ActualHeight<=0||end<=start)return;
+        var points=elevationProfile.Sample(start,end,canvas.ActualWidth);
+        double min=points.Min(p=>p.Elevation),max=points.Max(p=>p.Elevation),height=Math.Max(1,canvas.ActualHeight-12);
         double X(double d)=>(d-start)/(end-start)*canvas.ActualWidth;
         double Y(double ele)=>6+height*(1-(ele-min)/Math.Max(1,max-min));
-        for(int i=1;i<points.Count;i++)
+        for(int i=1;i<points.Length;i++)
         {
             var a=points[i-1];var b=points[i];
-            double middle=(a.D+b.D)/2,lo=Math.Max(0,middle-25),hi=Math.Min(route[^1].D,middle+25);
-            double grade=hi>lo?100*(Elev(hi)-Elev(lo))/(hi-lo):0;
-            canvas.Children.Add(new Line{X1=X(a.D),Y1=Y(a.E),X2=X(b.D),Y2=Y(b.E),Stroke=GradeBrush(grade),StrokeThickness=3});
+            double middle=(a.Distance+b.Distance)/2,lo=Math.Max(0,middle-25),hi=Math.Min(route[^1].D,middle+25);
+            double grade=100*(elevationProfile.At(hi)-elevationProfile.At(lo))/(hi-lo);
+            canvas.Children.Add(new Line{X1=X(a.Distance),Y1=Y(a.Elevation),X2=X(b.Distance),Y2=Y(b.Elevation),Stroke=GradeBrush(grade),StrokeThickness=3});
         }
-        if(distance>=start&&distance<=end)canvas.Children.Add(new Line{X1=X(distance),X2=X(distance),Y1=0,Y2=canvas.ActualHeight,Stroke=Brushes.White,StrokeThickness=2});
+        bool isMainProfile = ReferenceEquals(canvas, Profile);
+        if(isMainProfile)DrawProfileTelemetry(canvas, X, height);
+        double meters = DisplayDistance;
+        if(meters>=start&&meters<=end)
+        {
+            var marker = new Line{X1=X(meters),X2=X(meters),Y1=0,Y2=canvas.ActualHeight,Stroke=Brushes.White,StrokeThickness=2,IsHitTestVisible=false};
+            canvas.Children.Add(marker);
+            if(isMainProfile)profilePositionMarker = marker;
+        }
     }
     void UpdateRideMetrics()
     {
@@ -323,24 +343,57 @@ public partial class MainWindow : Window
         if(riding||ticking||countdown!=null||starting)return;if(pendingRide!=null){Status.Text=UiText.Get("Nejprve ulož čekající jízdu.");return;}starting=true;try{if(!await PrepareCountdown(10))return;if(control==null||device?.ConnectionStatus!=BluetoothConnectionStatus.Connected){Status.Text=UiText.Get("Trenažér není připojen.");return;}await Command([7]);demo=false;BeginRide();}catch(Exception ex){Status.Text=UiText.Get("Jízdu nelze spustit: ")+ex.Message;}finally{starting=false;}
     }
     async void StartDemo(object s,RoutedEventArgs e){if(trainerConnection!=null&&!trainerConnectingAutomatically){Status.Text=UiText.Get("Trenažér se ještě připojuje.");return;}if(route.Count<2){Status.Text=UiText.Get("Nejprve načtěte GPX.");return;}if(riding||ticking||countdown!=null||starting)return;starting=true;try{if(!await PrepareCountdown(3))return;demo=true;BeginRide();}finally{starting=false;}}
-    void BeginRide(){if(distance>=route[^1].D){distance=0;lastStreetDistance=double.NaN;UpdateStreetView(true);}lastGrade=double.NaN;lastTick=DateTime.UtcNow;rideStartDistance=distance;rideClock.Restart();UpdateRideMetrics();session=demo?null:new RideSession(RouteName.Text, distance, CurrentRidePosition(), routeHasUnsavedEdits ? null : routeSourcePath);currentPower=null;currentCadence=null;powerReceived=DateTime.MinValue;cadenceReceived=DateTime.MinValue;riding=true;SetRideMode(true);UpdateStreetView(true);timer.Start();PlayCountdownSound(true);Status.Text=demo?UiText.Get("Ukázková jízda: odpor se nemění."):UiText.Get("Jízda zahájena.");}
+    void BeginRide()
+    {
+        ClearProfilePreview();
+        if(distance>=route[^1].D)distance=0;
+        lastStreetDistance=double.NaN;
+        lastGrade=double.NaN;
+        lastTick=DateTime.UtcNow;
+        rideStartDistance=distance;
+        rideClock.Restart();
+        ResetProfileTelemetry();
+        session=demo?null:new RideSession(RouteName.Text, distance, CurrentRidePosition(), routeHasUnsavedEdits ? null : routeSourcePath);
+        currentPower=null;
+        currentCadence=null;
+        powerReceived=DateTime.MinValue;
+        cadenceReceived=DateTime.MinValue;
+        riding=true;
+        SetRideMode(true);
+        UpdateView();
+        timer.Start();
+        PlayCountdownSound(true);
+        Status.Text=demo?UiText.Get("Ukázková jízda: odpor se nemění."):UiText.Get("Jízda zahájena.");
+    }
     async void Tick(object? s,EventArgs e){
         if(!riding||ticking)return;ticking=true;try{
             var now=DateTime.UtcNow;double dt=Math.Clamp((now-lastTick).TotalSeconds,0,2);lastTick=now;
             if(demo)speed=20;else if((now-lastData).TotalSeconds>5)speed=0;
             if(session!=null && currentPower.HasValue && (now-powerReceived).TotalSeconds<=5)session.AddPower(currentPower.Value,dt);
             distance=Math.Min(route[^1].D,distance+speed/3.6*dt);
-            session?.AddSample(distance,(now-lastData).TotalSeconds<=5?speed:null,
+            double? sampleSpeed = demo || (now-lastData).TotalSeconds<=5 ? speed : null;
+            int? sampleHeartRate = CurrentHeartRate;
+            AddProfileTelemetry(distance, sampleSpeed, sampleHeartRate);
+            session?.AddSample(distance, sampleSpeed,
                 (now-cadenceReceived).TotalSeconds<=5?currentCadence:null,
-                (now-powerReceived).TotalSeconds<=5?currentPower:null,CurrentHeartRate,CurrentRidePosition());
-            double grade=Slope();UpdateView();
+                (now-powerReceived).TotalSeconds<=5?currentPower:null,sampleHeartRate,CurrentRidePosition());
+            double grade=SlopeAt(distance);UpdateView();
             if(!demo&&(double.IsNaN(lastGrade)||Math.Abs(grade-lastGrade)>=0.5)){
                 short raw=(short)Math.Round(grade*100);await Command([0x11,0,0,(byte)(raw&255),(byte)((raw>>8)&255),40,51]);lastGrade=grade;
             }
             if(riding && distance>=route[^1].D){riding=false;timer.Stop();SetRideMode(false);string saved=EndRide("Dokončeno");if(!demo)await Command([8,1]);Status.Text=UiText.Get("Trasa dokončena.")+saved;}
         }catch(Exception ex){riding=false;timer.Stop();SetRideMode(false);Status.Text=UiText.Get("Jízda zastavena: ")+ex.Message+EndRide("Přerušeno");}finally{ticking=false;}
     }
-    void UpdateView(){if(route.Count<2)return;Progress.Value=distance/route[^1].D*100;Grade.Text=$"{Slope():F1} %";Grade.Foreground=GradeBrush(Slope());RideInfo.Text=$"Ujeto {distance/1000:F2} z {route[^1].D/1000:F2} km"+(demo?UiText.Get(" · ukázková jízda"):"");if(demo||riding)Speed.Text=$"{speed:F1} km/h";UpdateRideMetrics();DrawProfile(null,null);SendPosition();}
+    void UpdateView()
+    {
+        if(route.Count<2)return;
+        Progress.Value=distance/route[^1].D*100;
+        UpdateProfileReadout();
+        if(demo||riding)Speed.Text=$"{speed:F1} km/h";
+        UpdateRideMetrics();
+        DrawProfile(null,null);
+        SendPosition();
+    }
     async void StopRide(object s,RoutedEventArgs e){if(countdown!=null){countdown.Cancel();Status.Text=UiText.Get("Odpočítávání zrušeno.");return;}bool real=riding&&!demo;riding=false;timer.Stop();SetRideMode(false);Status.Text=UiText.Get("Jízda zastavena.")+EndRide("Ukončeno");if(real)try{await Command([8,1]);}catch(Exception ex){Status.Text=UiText.Get("Jízda zastavena, trenažér nepotvrdil zastavení: ")+ex.Message;}}
     void DisconnectTrainer()
     {
@@ -389,13 +442,24 @@ public partial class MainWindow : Window
     }
     void SendMap(object message){if(mapReady) MapView.CoreWebView2.PostWebMessageAsJson(System.Text.Json.JsonSerializer.Serialize(message));}
     void SendRoute(){if(route.Count<2)return;SendMap(new{type="route",points=route.Select(p=>new[]{p.Lat,p.Lon})});SendPosition();}
-    (double Lat,double Lon) Position()=>PositionAt(distance);
     RidePosition CurrentRidePosition()
     {
-        var (latitude, longitude) = Position();
+        var (latitude, longitude) = PositionAt(distance);
         return new(latitude, longitude, Elev(distance));
     }
-    void SendPosition(){if(route.Count<2)return;var p=Position();SendMap(new{type="position",lat=p.Lat,lon=p.Lon,heading=Heading(),altitude=Elev(distance),distance});sharedRide?.Publish(distance,riding);UpdateStreetView();}
+    void SendDisplayedPosition()
+    {
+        if(route.Count<2)return;
+        double meters = DisplayDistance;
+        var point = PositionAt(meters);
+        SendMap(new{type="position",lat=point.Lat,lon=point.Lon,heading=HeadingAt(meters),altitude=Elev(meters),distance=meters,animate=riding&&distance>rideStartDistance});
+    }
+    void SendPosition()
+    {
+        SendDisplayedPosition();
+        sharedRide?.Publish(distance,riding);
+        UpdateStreetView();
+    }
     void FitMap(object s,RoutedEventArgs e)=>SendMap(new{type="fit"});
     void FollowRider(object s,RoutedEventArgs e)=>SendMap(new{type="follow"});
     void SendViewMode()
@@ -596,10 +660,10 @@ public partial class MainWindow : Window
         double lon=a.Lon+delta*t;if(lon>180)lon-=360;else if(lon< -180)lon+=360;
         return (a.Lat+(b.Lat-a.Lat)*t,lon);
     }
-    double Heading()
+    double HeadingAt(double meters)
     {
         if(route.Count<2)return 0;
-        int next=route.FindIndex(p=>p.D>distance+1e-8);
+        int next=route.FindIndex(p=>p.D>meters+1e-8);
         if(next<1)next=route.Count-1;
         var a=route[next-1];var b=route[next];
         double rad=Math.PI/180,lat1=a.Lat*rad,lat2=b.Lat*rad,dlon=(b.Lon-a.Lon)*rad;
@@ -674,11 +738,12 @@ public partial class MainWindow : Window
     }
     void UpdateStreetView(bool force=false)
     {
-        if(!mapReady||streetKey==null||route.Count<2||navigationMode)return;
-        if(!force&&(!riding||(!double.IsNaN(lastStreetDistance)&&Math.Abs(distance-lastStreetDistance)<panoramaSpacing)))return;
-        var p=Position();
-        SendMap(new{type="streetview",provider=streetProvider,key=streetKey,lat=p.Lat,lon=p.Lon,heading=Heading()});
-        lastStreetDistance=distance;
+        if(!mapReady||streetKey==null||route.Count<2||navigationMode||activeGoogle3DKey!=null)return;
+        double meters = DisplayDistance;
+        if(!force&&(!riding||(!double.IsNaN(lastStreetDistance)&&Math.Abs(meters-lastStreetDistance)<panoramaSpacing)))return;
+        var p=PositionAt(meters);
+        SendMap(new{type="streetview",provider=streetProvider,key=streetKey,lat=p.Lat,lon=p.Lon,heading=HeadingAt(meters)});
+        lastStreetDistance=meters;
     }
 
     void AutoStartPanorama()
@@ -793,6 +858,12 @@ public partial class MainWindow : Window
     void HandleClosing(object? sender,System.ComponentModel.CancelEventArgs e)
     {
         if(installingUpdate){e.Cancel=true;return;}
+        if(riding)
+        {
+            e.Cancel = true;
+            Status.Text = UiText.Get("Před zavřením aplikace zastav jízdu.");
+            return;
+        }
         countdown?.Cancel();
         EndRide("Přerušeno");
         if(pendingRide!=null) {
@@ -898,11 +969,12 @@ public partial class MainWindow : Window
         if(riding||ticking){Status.Text=UiText.Get("Nejprve zastavte jízdu.");return;}
         if(route.Count<2){Status.Text=UiText.Get("Nejprve načtěte GPX trasu.");return;}
         if(SharedRouteLocked())return;
-        var dialog=new RouteEditWindow(route[^1].D,route.Select(p=>(p.D,p.Ele)).ToList()){Owner=this};
+        if(elevationProfile==null)return;
+        var dialog=new RouteEditWindow(route[^1].D,elevationProfile){Owner=this};
         if(dialog.ShowDialog()!=true)return;
         try {
             var edited=CreateEditedRoute(dialog.StartMeters,dialog.EndMeters,dialog.Reverse);
-            route.Clear();route.AddRange(edited);distance=0;lastStreetDistance=double.NaN;
+            SetRoute(edited);distance=0;lastStreetDistance=double.NaN;
             RouteName.Text=RouteName.Text+UiText.Get(" – upravená");
             routeHasUnsavedEdits=true;
             SyncCatalogSelection();

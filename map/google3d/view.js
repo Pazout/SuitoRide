@@ -8,7 +8,14 @@ let apiKey, library, loading = false, failed = false;
 let map, marker, routeLine, riderName = '';
 let points = [], target, displayed, frame;
 const tilt = 58;
-const range = 290;
+let cameraRange = 290;
+
+function saveCameraRange() {
+    const range = map.range;
+    if (failed || !Number.isFinite(range) || range <= 0 || range === cameraRange) return;
+    cameraRange = range;
+    window.parent.postMessage({type: 'google-3d-range', range}, hostOrigin);
+}
 
 function showStatus(text) {
     statusLabel.textContent = text;
@@ -64,10 +71,11 @@ async function ensureMap() {
         if (failed) return;
         map = new library.Map3DElement({
             center: centerOf(target), heading: target.heading,
-            tilt, range, mode: 'SATELLITE', defaultUIHidden: true,
+            tilt, range: cameraRange, mode: 'SATELLITE', defaultUIHidden: true,
             description: t('Letecký pohled ve směru virtuální jízdy')
         });
         map.addEventListener('gmp-error', () => showError(t('Google 3D se nepodařilo vykreslit. Zkontroluj připojení a podporu WebGL.')));
+        map.addEventListener('gmp-rangechange', saveCameraRange);
         marker = new library.Marker3DElement({
             position: {lat: target.lat, lng: target.lon},
             altitudeMode: 'CLAMP_TO_GROUND',
@@ -121,7 +129,7 @@ function moveTo(next) {
     if (failed) return;
     cancelAnimationFrame(frame);
     frame = undefined;
-    if (!displayed || !previous || next.distance < previous.distance || next.distance - previous.distance > 100) {
+    if (next.animate === false || !displayed || !previous || next.distance < previous.distance || next.distance - previous.distance > 100) {
         render(next);
         return;
     }
@@ -149,6 +157,7 @@ window.addEventListener('message', event => {
     const message = event.data;
     if (message.type === 'init') {
         apiKey = message.key;
+        if (Number.isFinite(message.range) && message.range > 0) cameraRange = message.range;
         riderName = message.riderName || '';
         points = message.points;
         if (message.position) moveTo(message.position);
