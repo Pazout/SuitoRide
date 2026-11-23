@@ -17,10 +17,19 @@ internal static class TcxExporter
         string Number(double value)=>XmlConvert.ToString(value);
         string Time(double seconds)=>ride.StartedAt.ToUniversalTime().AddSeconds(seconds).ToString("yyyy-MM-ddTHH:mm:ss.fffZ",CultureInfo.InvariantCulture);
         var track=new XElement(tcx+"Track");
-        void AddPoint(double seconds,double distance,double? cadence,double? power,double? speed,int? heartRate = null)
+        void AddPoint(double seconds, double distance, RidePosition? position, double? cadence,
+            double? power, double? speed, int? heartRate = null)
         {
-            var point=new XElement(tcx+"Trackpoint",new XElement(tcx+"Time",Time(seconds)),
-                new XElement(tcx+"DistanceMeters",Number(distance)));
+            var point = new XElement(tcx + "Trackpoint", new XElement(tcx + "Time", Time(seconds)));
+            if (position is { Latitude: >= -90 and <= 90, Longitude: >= -180 and <= 180 })
+            {
+                point.Add(new XElement(tcx + "Position",
+                    new XElement(tcx + "LatitudeDegrees", Number(position.Latitude)),
+                    new XElement(tcx + "LongitudeDegrees", Number(position.Longitude))));
+                if (double.IsFinite(position.AltitudeMeters))
+                    point.Add(new XElement(tcx + "AltitudeMeters", Number(position.AltitudeMeters)));
+            }
+            point.Add(new XElement(tcx + "DistanceMeters", Number(distance)));
             if(heartRate is >0 and <=255)
                 point.Add(new XElement(tcx+"HeartRateBpm",new XElement(tcx+"Value",heartRate.Value)));
             if(cadence is >=0 and <=254 && double.IsFinite(cadence.Value))
@@ -31,17 +40,18 @@ internal static class TcxExporter
             if(tpx.HasElements)point.Add(new XElement(tcx+"Extensions",tpx));
             track.Add(point);
         }
-        AddPoint(0,0,null,null,null);
+        AddPoint(0, 0, ride.StartPosition, null, null, null);
         double previous=0;
         foreach(var sample in ride.Samples ?? Array.Empty<RideSample>())
         {
             if(!double.IsFinite(sample.ElapsedSeconds) || !double.IsFinite(sample.DistanceMeters))continue;
             double t=Math.Round(Math.Clamp(sample.ElapsedSeconds,0,ride.DurationSeconds),3);
             if(t<=previous || t>=ride.DurationSeconds)continue;
-            AddPoint(t,Math.Clamp(sample.DistanceMeters,0,ride.DistanceMeters),sample.CadenceRpm,sample.PowerWatts,sample.SpeedKmh,sample.HeartRateBpm);
+            AddPoint(t, Math.Clamp(sample.DistanceMeters, 0, ride.DistanceMeters), sample.Position,
+                sample.CadenceRpm, sample.PowerWatts, sample.SpeedKmh, sample.HeartRateBpm);
             previous=t;
         }
-        AddPoint(ride.DurationSeconds,ride.DistanceMeters,null,null,null);
+        AddPoint(ride.DurationSeconds, ride.DistanceMeters, ride.EndPosition, null, null, null);
         var lap=new XElement(tcx+"Lap",new XAttribute("StartTime",Time(0)),
             new XElement(tcx+"TotalTimeSeconds",Number(ride.DurationSeconds)),
             new XElement(tcx+"DistanceMeters",Number(ride.DistanceMeters)),

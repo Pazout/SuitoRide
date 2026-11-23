@@ -4,11 +4,15 @@ using System.Text.Json;
 
 namespace SuitoRide;
 
-public sealed record RideSample(double ElapsedSeconds, double DistanceMeters, double? SpeedKmh, double? CadenceRpm, double? PowerWatts, int? HeartRateBpm = null);
+public sealed record RidePosition(double Latitude, double Longitude, double AltitudeMeters);
+
+public sealed record RideSample(double ElapsedSeconds, double DistanceMeters, double? SpeedKmh,
+    double? CadenceRpm, double? PowerWatts, int? HeartRateBpm = null, RidePosition? Position = null);
 
 public sealed record RideRecord(
     Guid Id, DateTimeOffset StartedAt, string RouteName, string Result,
-    double DurationSeconds, double DistanceMeters, double? AveragePowerWatts, IReadOnlyList<RideSample>? Samples = null, string? RoutePath = null)
+    double DurationSeconds, double DistanceMeters, double? AveragePowerWatts, IReadOnlyList<RideSample>? Samples = null,
+    string? RoutePath = null, RidePosition? StartPosition = null, RidePosition? EndPosition = null)
 {
     public string DateDisplay => StartedAt.ToLocalTime().ToString("g");
     [System.Text.Json.Serialization.JsonIgnore]
@@ -25,23 +29,30 @@ internal sealed class RideSession
     readonly DateTimeOffset startedAt = DateTimeOffset.Now;
     readonly string routeName;
     readonly string? routePath;
+    readonly RidePosition startPosition;
     readonly double initialDistance;
     double powerSum, powerSeconds;
     readonly List<RideSample> samples=[];
-    public RideSession(string name, double distance, string? path = null) { routeName=name; initialDistance=distance; routePath=path; }
+    public RideSession(string name, double distance, RidePosition startPosition, string? path = null)
+    {
+        routeName = name;
+        initialDistance = distance;
+        this.startPosition = startPosition;
+        routePath = path;
+    }
     public void AddPower(double watts, double seconds)
     {
         if (watts >= 0 && double.IsFinite(watts) && seconds > 0) { powerSum += watts * seconds; powerSeconds += seconds; }
     }
-    public void AddSample(double distance,double? speed,double? cadence,double? power,int? heartRate)
+    public void AddSample(double distance, double? speed, double? cadence, double? power, int? heartRate, RidePosition position)
     {
-        samples.Add(new(clock.Elapsed.TotalSeconds,Math.Max(0,distance-initialDistance),speed,cadence,power,heartRate));
+        samples.Add(new(clock.Elapsed.TotalSeconds, Math.Max(0, distance - initialDistance), speed, cadence, power, heartRate, position));
     }
-    public RideRecord Finish(double distance, string result)
+    public RideRecord Finish(double distance, string result, RidePosition endPosition)
     {
         clock.Stop();
         return new(Guid.NewGuid(), startedAt, routeName, result, clock.Elapsed.TotalSeconds,
-            Math.Max(0,distance-initialDistance), powerSeconds > 0 ? powerSum / powerSeconds : null, samples.ToArray(),routePath);
+            Math.Max(0,distance-initialDistance), powerSeconds > 0 ? powerSum / powerSeconds : null, samples.ToArray(), routePath, startPosition, endPosition);
     }
 }
 

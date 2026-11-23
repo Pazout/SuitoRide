@@ -323,7 +323,7 @@ public partial class MainWindow : Window
         if(riding||ticking||countdown!=null||starting)return;if(pendingRide!=null){Status.Text=UiText.Get("Nejprve ulož čekající jízdu.");return;}starting=true;try{if(!await PrepareCountdown(10))return;if(control==null||device?.ConnectionStatus!=BluetoothConnectionStatus.Connected){Status.Text=UiText.Get("Trenažér není připojen.");return;}await Command([7]);demo=false;BeginRide();}catch(Exception ex){Status.Text=UiText.Get("Jízdu nelze spustit: ")+ex.Message;}finally{starting=false;}
     }
     async void StartDemo(object s,RoutedEventArgs e){if(trainerConnection!=null&&!trainerConnectingAutomatically){Status.Text=UiText.Get("Trenažér se ještě připojuje.");return;}if(route.Count<2){Status.Text=UiText.Get("Nejprve načtěte GPX.");return;}if(riding||ticking||countdown!=null||starting)return;starting=true;try{if(!await PrepareCountdown(3))return;demo=true;BeginRide();}finally{starting=false;}}
-    void BeginRide(){if(distance>=route[^1].D){distance=0;lastStreetDistance=double.NaN;UpdateStreetView(true);}lastGrade=double.NaN;lastTick=DateTime.UtcNow;rideStartDistance=distance;rideClock.Restart();UpdateRideMetrics();session=demo?null:new RideSession(RouteName.Text,distance,routeHasUnsavedEdits?null:routeSourcePath);currentPower=null;currentCadence=null;powerReceived=DateTime.MinValue;cadenceReceived=DateTime.MinValue;riding=true;SetRideMode(true);UpdateStreetView(true);timer.Start();PlayCountdownSound(true);Status.Text=demo?UiText.Get("Ukázková jízda: odpor se nemění."):UiText.Get("Jízda zahájena.");}
+    void BeginRide(){if(distance>=route[^1].D){distance=0;lastStreetDistance=double.NaN;UpdateStreetView(true);}lastGrade=double.NaN;lastTick=DateTime.UtcNow;rideStartDistance=distance;rideClock.Restart();UpdateRideMetrics();session=demo?null:new RideSession(RouteName.Text, distance, CurrentRidePosition(), routeHasUnsavedEdits ? null : routeSourcePath);currentPower=null;currentCadence=null;powerReceived=DateTime.MinValue;cadenceReceived=DateTime.MinValue;riding=true;SetRideMode(true);UpdateStreetView(true);timer.Start();PlayCountdownSound(true);Status.Text=demo?UiText.Get("Ukázková jízda: odpor se nemění."):UiText.Get("Jízda zahájena.");}
     async void Tick(object? s,EventArgs e){
         if(!riding||ticking)return;ticking=true;try{
             var now=DateTime.UtcNow;double dt=Math.Clamp((now-lastTick).TotalSeconds,0,2);lastTick=now;
@@ -332,7 +332,7 @@ public partial class MainWindow : Window
             distance=Math.Min(route[^1].D,distance+speed/3.6*dt);
             session?.AddSample(distance,(now-lastData).TotalSeconds<=5?speed:null,
                 (now-cadenceReceived).TotalSeconds<=5?currentCadence:null,
-                (now-powerReceived).TotalSeconds<=5?currentPower:null,CurrentHeartRate);
+                (now-powerReceived).TotalSeconds<=5?currentPower:null,CurrentHeartRate,CurrentRidePosition());
             double grade=Slope();UpdateView();
             if(!demo&&(double.IsNaN(lastGrade)||Math.Abs(grade-lastGrade)>=0.5)){
                 short raw=(short)Math.Round(grade*100);await Command([0x11,0,0,(byte)(raw&255),(byte)((raw>>8)&255),40,51]);lastGrade=grade;
@@ -390,6 +390,11 @@ public partial class MainWindow : Window
     void SendMap(object message){if(mapReady) MapView.CoreWebView2.PostWebMessageAsJson(System.Text.Json.JsonSerializer.Serialize(message));}
     void SendRoute(){if(route.Count<2)return;SendMap(new{type="route",points=route.Select(p=>new[]{p.Lat,p.Lon})});SendPosition();}
     (double Lat,double Lon) Position()=>PositionAt(distance);
+    RidePosition CurrentRidePosition()
+    {
+        var (latitude, longitude) = Position();
+        return new(latitude, longitude, Elev(distance));
+    }
     void SendPosition(){if(route.Count<2)return;var p=Position();SendMap(new{type="position",lat=p.Lat,lon=p.Lon,heading=Heading(),altitude=Elev(distance),distance});sharedRide?.Publish(distance,riding);UpdateStreetView();}
     void FitMap(object s,RoutedEventArgs e)=>SendMap(new{type="fit"});
     void FollowRider(object s,RoutedEventArgs e)=>SendMap(new{type="follow"});
@@ -766,7 +771,7 @@ public partial class MainWindow : Window
     string EndRide(string result)
     {
         if(session==null)return "";
-        var record=session.Finish(distance,result);
+        var record=session.Finish(distance, result, CurrentRidePosition());
         session=null;
         if(record.DistanceMeters<0.1)return "";
         pendingRide=record;
