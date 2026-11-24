@@ -1099,8 +1099,19 @@ public partial class MainWindow : Window
         Status.Text=UiText.Get("Pro změnu trasy se nejprve odpoj ze společné jízdy.");
         return true;
     }
+    static readonly Lazy<System.Media.SoundPlayer> countdownTick = new(() => LoadCountdownSound("CountdownTick"));
+    static readonly Lazy<System.Media.SoundPlayer> countdownStart = new(() => LoadCountdownSound("CountdownStart"));
+
+    static System.Media.SoundPlayer LoadCountdownSound(string name)
+    {
+        var stream = typeof(MainWindow).Assembly.GetManifestResourceStream($"SuitoRide.Assets.{name}.wav")
+            ?? throw new InvalidOperationException();
+        return new System.Media.SoundPlayer(stream);
+    }
+
     static void PlayCountdownSound(bool start)
     {
-        try { if(start)System.Media.SystemSounds.Asterisk.Play();else System.Media.SystemSounds.Beep.Play(); }
+        try { (start ? countdownStart : countdownTick).Value.Play(); }
         catch(Exception) { /* Odpočet funguje i bez dostupného zvukového zařízení. */ }
-    }}
+    }
+}
