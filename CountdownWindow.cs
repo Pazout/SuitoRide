@@ -35,7 +35,7 @@ internal sealed class CountdownWindow : Window
         center.Children.Add(new TextBlock { Text=UiText.Get("sekund do startu"), FontSize=24, HorizontalAlignment=HorizontalAlignment.Center });
         Grid.SetRow(center,0);layout.Children.Add(center);
 
-        var button=new Button { Content=UiText.Get("Zrušit odpočet"), Padding=new Thickness(28,14,28,14), FontSize=18,
+        var button=new ActionButton(ButtonIcons.Close, "Zrušit odpočet") { Padding=new Thickness(28,14,28,14), FontSize=18,
             HorizontalAlignment=HorizontalAlignment.Center, Margin=new Thickness(0,0,0,32),
             Style=(Style)Application.Current.FindResource("HighContrastButton") };
         button.Click+=(_,_)=>cancel();

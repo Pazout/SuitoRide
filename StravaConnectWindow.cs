@@ -19,13 +19,13 @@ internal sealed class StravaConnectWindow : SuitoDialog
         WindowStartupLocation=WindowStartupLocation.CenterOwner;
         var panel=new StackPanel{Margin=new Thickness(20)};
         panel.Children.Add(new TextBlock{Text=UiText.Get("Pro přímé propojení vytvoř vlastní API aplikaci ve Stravě (Strava k tomu vyžaduje předplatné). Autorizační doménu nastav na localhost. Client Secret nikomu neposílej."),TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,0,0,10)});
-        var open=new Button{Content=UiText.Get("Otevřít nastavení Strava API"),HorizontalAlignment=HorizontalAlignment.Left,Padding=new Thickness(9,5,9,5),Margin=new Thickness(0,0,0,10)};
+        var open=new ActionButton(ButtonIcons.External, "Otevřít nastavení Strava API"){ HorizontalAlignment=HorizontalAlignment.Left,Padding=new Thickness(9,5,9,5),Margin=new Thickness(0,0,0,10)};
         open.Click+=(_,_)=>{try{Process.Start(new ProcessStartInfo("https://www.strava.com/settings/api"){UseShellExecute=true});}catch(Exception ex){MessageBox.Show(this,UiText.Get("Nelze otevřít prohlížeč: ")+ex.Message,"Strava");}};panel.Children.Add(open);
         panel.Children.Add(new TextBlock{Text="Client ID"});
         clientId=new TextBox{Margin=new Thickness(0,3,0,8)};panel.Children.Add(clientId);
         panel.Children.Add(new TextBlock{Text="Client Secret"});
         secret=new PasswordBox{Margin=new Thickness(0,3,0,10)};panel.Children.Add(secret);
-        connect=new Button{Content=UiText.Get("Připojit Stravu"),Padding=new Thickness(12,6,12,6),HorizontalAlignment=HorizontalAlignment.Left,Margin=new Thickness(0,0,0,10)};
+        connect=new ActionButton(ButtonIcons.Connect, "Připojit Stravu", prompt: true){ Padding=new Thickness(12,6,12,6),HorizontalAlignment=HorizontalAlignment.Left,Margin=new Thickness(0,0,0,10)};
         connect.Click+=Connect;panel.Children.Add(connect);
         status=new TextBlock{Text=service.IsConnected?UiText.Get("Účet je propojen. Pro změnu účtu zadej nové údaje."):UiText.Get("Přístup potvrdíš na webu Stravy. Údaje se uloží zašifrované pro tvůj účet Windows."),TextWrapping=TextWrapping.Wrap};
         panel.Children.Add(status);

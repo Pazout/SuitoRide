@@ -41,8 +41,8 @@ internal sealed class RouteEditWindow : SuitoDialog
         reverse=new CheckBox { Content=UiText.Get("Obrátit směr vybraného úseku"), Margin=new Thickness(0,0,0,12) };
         panel.Children.Add(reverse);
         var buttons=new StackPanel { Orientation=Orientation.Horizontal, HorizontalAlignment=HorizontalAlignment.Right };
-        var cancel=new Button { Content=UiText.Get("Zrušit"), MinWidth=95, Margin=new Thickness(0,0,8,0), IsCancel=true };
-        var apply=new Button { Content=UiText.Get("Použít úsek"), MinWidth=105, IsDefault=true };
+        var cancel=new ActionButton(ButtonIcons.Close, "Zrušit") { MinWidth=95, Margin=new Thickness(0,0,8,0), IsCancel=true };
+        var apply=new ActionButton(ButtonIcons.Check, "Použít úsek", prompt: true) { MinWidth=105, IsDefault=true };
         apply.Click+=(_,_)=>{
             if(EndMeters-StartMeters<10) { MessageBox.Show(this,UiText.Get("Cíl musí být alespoň 10 metrů za začátkem výběru."),UiText.Get("Upravit trasu"),MessageBoxButton.OK,MessageBoxImage.Information);return; }
             DialogResult=true;

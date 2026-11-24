@@ -66,6 +66,9 @@ internal static class UiText
 
     public static string Get(string source) => Texts.GetValueOrDefault(source,source);
 
+    internal static string ActionLabel(string source, bool prompt) =>
+        Get(source) + (prompt ? "..." : "");
+
     public static string Format(FormattableString value) =>
         string.Format(CultureInfo.CurrentCulture,Get(value.Format),value.GetArguments());
 }
@@ -73,5 +76,7 @@ internal static class UiText
 [MarkupExtensionReturnType(typeof(string))]
 public sealed class UiExtension(string source) : MarkupExtension
 {
-    public override object ProvideValue(IServiceProvider serviceProvider) => UiText.Get(source);
+    public bool Prompt { get; set; }
+
+    public override object ProvideValue(IServiceProvider serviceProvider) => UiText.ActionLabel(source, Prompt);
 }

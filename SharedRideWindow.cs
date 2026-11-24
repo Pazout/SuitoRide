@@ -40,11 +40,11 @@ internal sealed class SharedRideWindow : SuitoDialog
         panel.Children.Add(new TextBlock{Text=UiText.Get("Kód místnosti")});
         roomBox=new TextBox{MaxLength=32,Margin=new Thickness(0,3,0,10)};panel.Children.Add(roomBox);
         var buttons=new WrapPanel();
-        hostButton=new Button{Content=UiText.Get("Vytvořit místnost"),Padding=new Thickness(9,6,9,6),Margin=new Thickness(0,0,8,8)};
-        remoteHostButton=new Button{Content=UiText.Get("Vytvořit na serveru"),Padding=new Thickness(9,6,9,6),Margin=new Thickness(0,0,8,8)};
-        joinButton=new Button{Content=UiText.Get("Připojit se"),Padding=new Thickness(9,6,9,6),Margin=new Thickness(0,0,8,8)};
-        disconnectButton=new Button{Content=UiText.Get("Odpojit"),Padding=new Thickness(9,6,9,6),Margin=new Thickness(0,0,8,8),IsEnabled=false};
-        copyButton=new Button{Content=UiText.Get("Kopírovat kód"),Padding=new Thickness(9,6,9,6),Margin=new Thickness(0,0,8,8)};
+        hostButton=new ActionButton(ButtonIcons.Add, "Vytvořit místnost"){ Padding=new Thickness(9,6,9,6),Margin=new Thickness(0,0,8,8)};
+        remoteHostButton=new ActionButton(ButtonIcons.Server, "Vytvořit na serveru"){ Padding=new Thickness(9,6,9,6),Margin=new Thickness(0,0,8,8)};
+        joinButton=new ActionButton(ButtonIcons.Join, "Připojit se"){ Padding=new Thickness(9,6,9,6),Margin=new Thickness(0,0,8,8)};
+        disconnectButton=new ActionButton(ButtonIcons.Disconnect, "Odpojit"){ Padding=new Thickness(9,6,9,6),Margin=new Thickness(0,0,8,8),IsEnabled=false};
+        copyButton=new ActionButton(ButtonIcons.Copy, "Kopírovat kód"){ Padding=new Thickness(9,6,9,6),Margin=new Thickness(0,0,8,8)};
         buttons.Children.Add(hostButton);buttons.Children.Add(remoteHostButton);buttons.Children.Add(joinButton);buttons.Children.Add(disconnectButton);buttons.Children.Add(copyButton);panel.Children.Add(buttons);
         stateText=new TextBlock{Text=UiText.Get("Pro internet použijte společnou zabezpečenou síť (VPN). Host sdělí kamarádovi svou VPN adresu a kód místnosti."),TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,4,0,0)};panel.Children.Add(stateText);
         hostButton.Click+=async (_,_)=>await Connect(true,true);

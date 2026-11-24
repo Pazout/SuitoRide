@@ -377,7 +377,7 @@
   "Čekám na adresu z prohlížeče.": "Estoy esperando mi dirección del navegador.",
   "Čekám na připojení trenažéru. Pokus můžeš zrušit tlačítkem Odpojit.": "Esperando que el entrenador se conecte. Seleccione Desconectarse para cancelar.",
   "— ot/min": "— rpm",
-  "■  Zastavit": "■  Detener",
-  "▶  Zahájit jízdu": "▶  Iniciar salida",
-  "▷  Ukázková jízda": "▷  Salida de demostración"
+  "Zastavit": "Detener",
+  "Zahájit jízdu": "Iniciar salida",
+  "Ukázková jízda": "Salida de demostración"
 }

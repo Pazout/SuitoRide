@@ -1,6 +1,6 @@
 # Suito Ride – příručka pro agenty
 
-Suito Ride je desktopová aplikace pro Windows v C# a WPF (.NET 10) pro jízdu po GPX na trenažéru s Bluetooth LE FTMS, například Elite Suito. Windows GATT zajišťuje připojení zařízení a WebView2 zobrazuje mapy. Tato příručka popisuje práci v repozitáři. Uživatelský návod je v [README.md](README.md). Všechny zde uvedené cesty ke zdrojům jsou relativní ke kořenu repozitáře.
+Suito Ride je desktopová aplikace pro Windows v C# a WPF (.NET 10) pro jízdu po GPX na trenažéru s Bluetooth LE FTMS, například Elite Suito. Aplikace načítá katalog GPX z místní složky, umožňuje vybrat úsek a směr jízdy, mění odpor podle sklonu a zaznamenává telemetrii. Windows GATT zajišťuje připojení zařízení a WebView2 zobrazuje mapy. Ukázková jízda funguje bez zařízení. Skutečné jízdy se ukládají do historie a lze je exportovat do TCX nebo odeslat do připojených služeb. Tato příručka popisuje práci v repozitáři. Uživatelský návod je v [README.md](README.md). Všechny zde uvedené cesty ke zdrojům jsou relativní ke kořenu repozitáře.
 
 ## Začátek práce a sestavení
 
@@ -15,21 +15,25 @@ Suito Ride je desktopová aplikace pro Windows v C# a WPF (.NET 10) pro jízdu p
 | Oblast | Soubory |
 | --- | --- |
 | Hlavní okno, GPX, katalog, obnova trasy, měření jízdy a FTMS | [MainWindow.xaml](MainWindow.xaml), [MainWindow.xaml.cs](MainWindow.xaml.cs) |
-| Výběr startu a cíle na profilu, otočení směru | [RouteEditWindow.cs](RouteEditWindow.cs) |
+| Tlačítka, ikony a společný styl oken | [ActionButton.cs](ActionButton.cs), [App.xaml](App.xaml), [SuitoDialog.cs](SuitoDialog.cs) |
+| GPX profil, výběr startu a cíle, otočení směru | [ElevationProfile.cs](ElevationProfile.cs), [RouteEditWindow.cs](RouteEditWindow.cs) |
 | BLE vyhledávání, identita a výběr zařízení, měření tepu | [BluetoothDeviceConnection.cs](BluetoothDeviceConnection.cs), [BluetoothDeviceWindow.cs](BluetoothDeviceWindow.cs), [MainWindow.HeartRate.cs](MainWindow.HeartRate.cs) |
 | Základní mapa Leaflet, navigace MapLibre, přehled a panoramata | [map/index.html](map/index.html) |
 | Kamera Google 3D | [map/google3d/view.js](map/google3d/view.js) |
 | Nastavení map a klíčů | [MapSettingsWindow.cs](MapSettingsWindow.cs), [MapApiKeySettings.cs](MapApiKeySettings.cs), [PanoramaKeyStore.cs](PanoramaKeyStore.cs) |
-| Historie, TCX a odesílání jízd | [RideHistory.cs](RideHistory.cs), [HistoryWindow.cs](HistoryWindow.cs), [TcxExporter.cs](TcxExporter.cs), [StravaService.cs](StravaService.cs), [FitnessSyncerService.cs](FitnessSyncerService.cs) |
+| Historie, TCX a odesílání jízd | [RideHistory.cs](RideHistory.cs), [HistoryWindow.cs](HistoryWindow.cs), [TcxExporter.cs](TcxExporter.cs), [StravaService.cs](StravaService.cs), [FitnessSyncerService.cs](FitnessSyncerService.cs), [IntervalsIcuService.cs](IntervalsIcuService.cs), [DropboxRideArchive.cs](DropboxRideArchive.cs) |
 | Odpočet, společná jízda a aktualizace | [CountdownWindow.cs](CountdownWindow.cs), [SharedRideWindow.cs](SharedRideWindow.cs), [server SignalR](SpolecnaJizda.Server/Program.cs), [AppUpdates.cs](AppUpdates.cs) |
 | Překlady | [UiText.cs](UiText.cs), [Localization/](Localization/), [map/localization.js](map/localization.js) |
 
 ## Chování, které zachovat při změnách
 
+- **Rozvržení.** Hlavní okno startuje maximalizované ve využitelné ploše Windows. Při jízdě přejde přes hlavní panel na stejném monitoru a po jízdě se vrátí do předchozího stavu. Mapa a výškový profil se dělí o dostupnou výšku, spodní telemetrie a ovládání mají vlastní řádky. Při změně panelů ověř malé okno i stav, kdy se současně připojují obě zařízení.
+- **Tlačítka.** Pro vlastní tlačítka WPF používej ActionButton a odpovídající ikonu z ButtonIcons. Nech popisek textový pro čtečky obrazovky a zachovej společný kontrastní styl. Pokud akce otevírá dialog nebo vyžaduje další vstup, použij v XAML parametr Prompt=True nebo v C# prompt: true. Tři tečky doplňuje UiText až za přeložený text. Přímo vykonané akce jako Zastavit a Obnovit katalog mají samotný popisek.
+
 - **Bluetooth.** Po načtení hlavního okna se nezávisle hledá poslední úspěšně připojený trenažér a hrudní pás. Pět minut je horní limit automatického hledání od spuštění aplikace. Ruční vyhledání nebo připojení ukončí automatický pokus jen u příslušného typu zařízení a jen v daném spuštění. Úspěšné připojení aktualizuje uloženou identitu. Zachovej čtení starších záznamů trenažéru obsahujících jen adresu a jméno.
 - **Indikátory BLE.** Pod údajem Tep je stav pásu, pod údajem Výkon stav trenažéru. Oba mohou být vidět současně. Text hledání se po nalezení změní na připojování a po skončení pokusu zmizí. Tlačítka pro otevření dialogů jsou při jízdě skrytá a telemetrie zůstává viditelná.
 - **Mapy.** Poloha jezdce vychází z ujeté vzdálenosti po právě načteném úseku GPX. MapLibre plynule sleduje jezdce a směr nezávisle na přepínačích hlavní mapy. Jeho zoom se pamatuje. Při běžící navigaci se přepínače hlavní mapy startem jízdy automaticky nezapínají. Při změně výpočtu směru ověř ostrou zatáčku, obrácený GPX, přechod přes sever a konec trasy.
-- **Jízda a export.** Ukázka má odpočet 3–2–1 a skutečná jízda 10 sekund. Okno odpočtu patří na monitor aplikace. Ukázka se do historie nezapisuje. Tep je volitelný ve vzorcích a TCX, aby šly číst i starší záznamy. Po pěti sekundách bez nové hodnoty aplikace starý tep dál nepoužívá. TCX používá i odesílání na Stravu a FitnessSyncer.
+- **Jízda a export.** Ukázka má odpočet 3–2–1 a skutečná jízda 10 sekund. Krátké tiky zazní na 3, 2 a 1. Start má delší tón. Zvuky jsou vložené jako WAV ve složce Assets a okno odpočtu patří na monitor aplikace. Ukázka se do historie nezapisuje. Tep je volitelný ve vzorcích a TCX, aby šly číst i starší záznamy. Po pěti sekundách bez nové hodnoty aplikace starý tep dál nepoužívá. Nové záznamy obsahují polohu a výšku z GPX. Stejný TCX používá ruční export, místní archiv Dropboxu a odesílání na Stravu, FitnessSyncer a Intervals.icu. Dropbox pracuje s místní složkou synchronizovanou klientem Windows.
 - **Překlady.** Výchozí jazyk vychází z regionálního formátu Windows, ruční nastavení se použije při příštím spuštění. České texty tvoří klíče. Při změně přeložitelného popisku aktualizuj odpovídající překlady pro angličtinu, němčinu, francouzštinu, španělštinu, japonštinu, polštinu a slovenštinu. Texty v mapové vrstvě mají vlastní lokalizaci.
 
 ## Uživatelská data a vydání

@@ -25,8 +25,8 @@ internal sealed class MapApiKeySettings : StackPanel
         };
         var instructions = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 5, 0, 0) };
         var input = new PasswordBox { Margin = new Thickness(0, 0, 0, 8), MaxLength = 256 };
-        var save = new Button { Content = UiText.Get("Uložit klíč"), IsEnabled = false, Padding = new Thickness(9, 5, 9, 5) };
-        var remove = new Button { Content = UiText.Get("Odstranit uložený klíč"),
+        var save = new ActionButton(ButtonIcons.Save, "Uložit klíč") { IsEnabled = false, Padding = new Thickness(9, 5, 9, 5) };
+        var remove = new ActionButton(ButtonIcons.Trash, "Odstranit uložený klíč") {
             Margin = new Thickness(8, 0, 0, 0), Padding = new Thickness(9, 5, 9, 5) };
         var status = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 5, 0, 0) };
         var actions = new WrapPanel();

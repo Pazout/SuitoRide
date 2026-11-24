@@ -17,9 +17,16 @@
           <Setter.Value>
             <ControlTemplate TargetType="Button">
               <Border x:Name="ButtonBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
-                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                  <Path x:Name="ButtonIcon" Data="{TemplateBinding local:ActionButton.Icon}"
+                        Width="14" Height="14" Margin="0,0,6,0" Stretch="Uniform" VerticalAlignment="Center"
+                        Stroke="{TemplateBinding Foreground}" StrokeThickness="1.4" StrokeStartLineCap="Round"
+                        StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+                  <ContentPresenter VerticalAlignment="Center" RecognizesAccessKey="True"/>
+                </StackPanel>
               </Border>
               <ControlTemplate.Triggers>
+                <Trigger Property="local:ActionButton.Icon" Value="{x:Null}"><Setter TargetName="ButtonIcon" Property="Visibility" Value="Collapsed"/></Trigger>
                 <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ButtonBorder" Property="Background" Value="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}"/></Trigger>
                 <Trigger Property="IsPressed" Value="True"><Setter TargetName="ButtonBorder" Property="Background" Value="#0b2922"/></Trigger>
                 <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="ButtonBorder" Property="BorderBrush" Value="White"/><Setter TargetName="ButtonBorder" Property="BorderThickness" Value="2"/></Trigger>
@@ -30,5 +37,6 @@
         </Setter>
       </Style>
       <Style TargetType="Button" BasedOn="{StaticResource HighContrastButton}"/>
+      <Style TargetType="local:ActionButton" BasedOn="{StaticResource HighContrastButton}"/>
     </Application.Resources>
 </Application>

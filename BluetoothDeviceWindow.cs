@@ -45,7 +45,7 @@ internal sealed class BluetoothDeviceWindow : SuitoDialog
         list.SelectionChanged+=(_,_)=>RefreshButtons();
         panel.Children.Add(list);
         var actions=new WrapPanel { Margin=new Thickness(0,8,0,0) };
-        scan=AddButton(scanLabel,()=>{
+        scan=AddButton(ButtonIcons.Search,scanLabel,()=>{
             ManualScanRequested?.Invoke();
             if(automaticConnection)
             {
@@ -55,7 +55,7 @@ internal sealed class BluetoothDeviceWindow : SuitoDialog
             }
             StartScan();
         });
-        connect=AddButton("Připojit vybraný",()=>{
+        connect=AddButton(ButtonIcons.Connect,"Připojit vybraný",()=>{
             if(list.SelectedItem is not BluetoothDeviceChoice selected)return;
             StopScan();
             connecting=true;
@@ -64,7 +64,7 @@ internal sealed class BluetoothDeviceWindow : SuitoDialog
             RefreshButtons();
             ConnectRequested?.Invoke(selected);
         });
-        disconnect=AddButton("Odpojit",()=>DisconnectRequested?.Invoke());
+        disconnect=AddButton(ButtonIcons.Disconnect,"Odpojit",()=>DisconnectRequested?.Invoke());
         panel.Children.Add(actions);
         panel.Children.Add(status);
         Content=panel;
@@ -80,9 +80,9 @@ internal sealed class BluetoothDeviceWindow : SuitoDialog
         Loaded+=(_,_)=>{if(!connected&&!connecting&&selected==null)StartScan();};
         Closed+=(_,_)=>StopScan();
 
-        Button AddButton(string label,Action action)
+        Button AddButton(System.Windows.Media.Geometry icon,string label,Action action)
         {
-            var button=new Button { Content=UiText.Get(label), Margin=new Thickness(0,0,6,4), Padding=new Thickness(9,5,9,5) };
+            var button=new ActionButton(icon, label) { Margin=new Thickness(0,0,6,4), Padding=new Thickness(9,5,9,5) };
             button.Click+=(_,_)=>action();
             actions.Children.Add(button);
             return button;

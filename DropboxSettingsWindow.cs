@@ -19,11 +19,11 @@ internal sealed class DropboxSettingsWindow : SuitoDialog
         var status = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) };
         var catalogPath = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 5) };
         var archivePath = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 5) };
-        var pickCatalog = new Button { Content = UiText.Get("Vybrat složku GPX"), Padding = new Thickness(9, 5, 9, 5), HorizontalAlignment = HorizontalAlignment.Left };
-        var pickArchive = new Button { Content = UiText.Get("Vybrat složku pro TCX"), Padding = new Thickness(9, 5, 9, 5) };
-        var disable = new Button
+        var pickCatalog = new ActionButton(ButtonIcons.Folder, "Vybrat složku GPX", prompt: true) { Padding = new Thickness(9, 5, 9, 5), HorizontalAlignment = HorizontalAlignment.Left };
+        var pickArchive = new ActionButton(ButtonIcons.Folder, "Vybrat složku pro TCX", prompt: true) { Padding = new Thickness(9, 5, 9, 5) };
+        var disable = new ActionButton(ButtonIcons.Stop, "Vypnout automatické ukládání")
         {
-            Content = UiText.Get("Vypnout automatické ukládání"), Padding = new Thickness(9, 5, 9, 5),
+            Padding = new Thickness(9, 5, 9, 5),
             Margin = new Thickness(8, 0, 0, 0)
         };
         var actions = new WrapPanel();
@@ -45,9 +45,9 @@ internal sealed class DropboxSettingsWindow : SuitoDialog
         panel.Children.Add(archivePath);
         panel.Children.Add(actions);
         panel.Children.Add(status);
-        panel.Children.Add(new Button
+        panel.Children.Add(new ActionButton(ButtonIcons.Close, "Zavřít")
         {
-            Content = UiText.Get("Zavřít"), IsCancel = true, HorizontalAlignment = HorizontalAlignment.Right,
+            IsCancel = true, HorizontalAlignment = HorizontalAlignment.Right,
             Padding = new Thickness(9, 5, 9, 5), Margin = new Thickness(0, 8, 0, 0)
         });
         Content = panel;

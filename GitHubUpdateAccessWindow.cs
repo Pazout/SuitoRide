@@ -24,8 +24,8 @@ internal sealed class GitHubUpdateAccessWindow : SuitoDialog
         panel.Children.Add(new Label { Content = UiText.Get("Token GitHub"), Target = input });
         panel.Children.Add(input);
         var actions = new WrapPanel();
-        var open = new Button { Content = UiText.Get("Otevřít nastavení tokenů"), Padding = new Thickness(9, 5, 9, 5), Margin = new Thickness(0, 0, 8, 0) };
-        var verify = new Button { Content = UiText.Get("Ověřit přístup"), IsDefault = true, IsEnabled = false, Padding = new Thickness(9, 5, 9, 5) };
+        var open = new ActionButton(ButtonIcons.External, "Otevřít nastavení tokenů") { Padding = new Thickness(9, 5, 9, 5), Margin = new Thickness(0, 0, 8, 0) };
+        var verify = new ActionButton(ButtonIcons.Check, "Ověřit přístup") { IsDefault = true, IsEnabled = false, Padding = new Thickness(9, 5, 9, 5) };
         var status = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0) };
         actions.Children.Add(open);
         actions.Children.Add(verify);

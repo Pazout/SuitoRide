@@ -377,7 +377,7 @@
   "Čekám na adresu z prohlížeče.": "ブラウザのアドレスをお待ちしています。",
   "Čekám na připojení trenažéru. Pokus můžeš zrušit tlačítkem Odpojit.": "トレーナーが接続するのを待ちます。Disconnectを選択してキャンセルします。",
   "— ot/min": "— rpm",
-  "■  Zastavit": "■  停止",
-  "▶  Zahájit jízdu": "▶  ライド開始",
-  "▷  Ukázková jízda": "▷  デモライド"
+  "Zastavit": "停止",
+  "Zahájit jízdu": "ライド開始",
+  "Ukázková jízda": "デモライド"
 }

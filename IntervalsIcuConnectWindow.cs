@@ -15,16 +15,16 @@ internal sealed class IntervalsIcuConnectWindow : SuitoDialog
 
         var panel = new StackPanel { Margin = new Thickness(16) };
         var key = new PasswordBox { Margin = new Thickness(0, 2, 0, 10) };
-        var settings = new Button { Content = UiText.Get("Otevřít nastavení Intervals.icu"), Padding = new Thickness(9, 5, 9, 5) };
-        var save = new Button { Content = UiText.Get("Ověřit a uložit"), IsDefault = true, Padding = new Thickness(9, 5, 9, 5) };
-        var forget = new Button
+        var settings = new ActionButton(ButtonIcons.External, "Otevřít nastavení Intervals.icu") { Padding = new Thickness(9, 5, 9, 5) };
+        var save = new ActionButton(ButtonIcons.Save, "Ověřit a uložit") { IsDefault = true, Padding = new Thickness(9, 5, 9, 5) };
+        var forget = new ActionButton(ButtonIcons.Disconnect, "Odebrat uložené spojení")
         {
-            Content = UiText.Get("Odebrat uložené spojení"), IsEnabled = service.IsConnected,
+            IsEnabled = service.IsConnected,
             Padding = new Thickness(9, 5, 9, 5), Margin = new Thickness(8, 0, 0, 0)
         };
-        var cancel = new Button
+        var cancel = new ActionButton(ButtonIcons.Close, "Zrušit")
         {
-            Content = UiText.Get("Zrušit"), IsCancel = true, Padding = new Thickness(9, 5, 9, 5),
+            IsCancel = true, Padding = new Thickness(9, 5, 9, 5),
             Margin = new Thickness(8, 0, 0, 0)
         };
         var status = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) };

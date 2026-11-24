@@ -59,8 +59,8 @@ internal sealed class MapSettingsWindow : SuitoDialog
             Margin=new Thickness(0,6,0,8) });
 
         var actions=new WrapPanel();
-        var open=new Button { Content=UiText.Get("Otevřít složku"), IsEnabled=profile!=null, Padding=new Thickness(9,5,9,5), Margin=new Thickness(0,0,8,0) };
-        var clear=new Button { Content=UiText.Get("Vyčistit mezipaměť"), IsEnabled=profile!=null, Padding=new Thickness(9,5,9,5) };
+        var open=new ActionButton(ButtonIcons.OpenFolder, "Otevřít složku") { IsEnabled=profile!=null, Padding=new Thickness(9,5,9,5), Margin=new Thickness(0,0,8,0) };
+        var clear=new ActionButton(ButtonIcons.Trash, "Vyčistit mezipaměť") { IsEnabled=profile!=null, Padding=new Thickness(9,5,9,5) };
         actions.Children.Add(open);
         actions.Children.Add(clear);
         panel.Children.Add(actions);
@@ -86,7 +86,7 @@ internal sealed class MapSettingsWindow : SuitoDialog
         var row=new DockPanel();
         var nameBox=new TextBox { Text=currentName, MaxLength=30, VerticalContentAlignment=VerticalAlignment.Center };
         var label=new Label { Content=UiText.Get("Jméno jezdce na mapě"), Target=nameBox, VerticalAlignment=VerticalAlignment.Center };
-        var save=new Button { Content=UiText.Get("Uložit jméno"), Margin=new Thickness(8,0,0,0), IsEnabled=false };
+        var save=new ActionButton(ButtonIcons.Save, "Uložit jméno") { Margin=new Thickness(8,0,0,0), IsEnabled=false };
         var status=new TextBlock { TextWrapping=TextWrapping.Wrap };
         DockPanel.SetDock(save,Dock.Right);
         row.Children.Add(label);

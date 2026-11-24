@@ -25,10 +25,10 @@ internal sealed class RideUploadWindow : SuitoDialog
             MinHeight = 90, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(0, 2, 0, 10)
         };
-        var send = new Button { Content = UiText.Get("Odeslat"), IsDefault = true, Padding = new Thickness(9, 5, 9, 5) };
-        var cancel = new Button
+        var send = new ActionButton(ButtonIcons.Send, "Odeslat") { IsDefault = true, Padding = new Thickness(9, 5, 9, 5) };
+        var cancel = new ActionButton(ButtonIcons.Close, "Zrušit")
         {
-            Content = UiText.Get("Zrušit"), IsCancel = true, Padding = new Thickness(9, 5, 9, 5),
+            IsCancel = true, Padding = new Thickness(9, 5, 9, 5),
             Margin = new Thickness(8, 0, 0, 0)
         };
         var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
