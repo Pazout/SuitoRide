@@ -79,8 +79,12 @@ async function ensureMap() {
         marker = new library.Marker3DElement({
             position: {lat: target.lat, lng: target.lon},
             altitudeMode: 'CLAMP_TO_GROUND',
-            label: riderName || t('Jezdec')
+            collisionBehavior: 'REQUIRED',
+            drawsWhenOccluded: true,
+            sizePreserved: true
         });
+        marker.setAttribute('aria-label', riderName || t('Jezdec'));
+        marker.append(document.getElementById('rider-icon').cloneNode(true));
         scene.append(map);
         map.append(marker);
         drawRoute();
@@ -163,7 +167,7 @@ window.addEventListener('message', event => {
         if (message.position) moveTo(message.position);
     } else if (message.type === 'rider-name') {
         riderName = message.name;
-        if (marker) marker.label = riderName || t('Jezdec');
+        if (marker) marker.setAttribute('aria-label', riderName || t('Jezdec'));
     } else if (message.type === 'route') {
         points = message.points;
         target = displayed = undefined;

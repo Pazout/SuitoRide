@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <Version>0.2.17</Version>
+    <Version>0.2.18</Version>
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -11,13 +11,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.7.0" GeneratePathProperty="true" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.15" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" />
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Localization/*.json"/>
-    <EmbeddedResource Include="Assets/CountdownTick.wav;Assets/CountdownStart.wav"/>
+    <EmbeddedResource Include="Localization/*.json" />
+    <None Include="$(PkgBouncyCastle_Cryptography)\LICENSE.md" Link="licenses\BouncyCastle.Cryptography.md"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest"
+          Condition="'$(PkgBouncyCastle_Cryptography)' != ''" />
+    <EmbeddedResource Include="Assets/CountdownTick.wav;Assets/CountdownStart.wav;Assets/MachineUpdate.ps1" />
   </ItemGroup>
   <ItemGroup><Content Include="map\**"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content></ItemGroup>
   <ItemGroup><Resource Include="Assets\SuitoRide.ico" /></ItemGroup>

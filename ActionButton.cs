@@ -50,6 +50,7 @@ public static class ButtonIcons
     public static Geometry Play { get; } = Draw("M4,2L14,8 4,14Z");
     public static Geometry Demo { get; } = Draw("M1,3H15V13H1Z M6,5.5L11,8 6,10.5Z");
     public static Geometry Stop { get; } = Draw("M3,3H13V13H3Z");
+    public static Geometry Battery { get; } = Draw("M1,5H13V11H1Z M15,7V9 M4,8H10");
     public static Geometry Close { get; } = Draw("M3,3L13,13 M13,3L3,13");
     public static Geometry Search { get; } = Draw("M11,6 A5,5 0 1 1 1,6 A5,5 0 1 1 11,6 M10,10L15,15");
     public static Geometry Connect { get; } = Draw("M5,2V5 M11,2V5 M3,5H13 M4,5V8 A4,4 0 0 0 12,8V5 M8,12V15");

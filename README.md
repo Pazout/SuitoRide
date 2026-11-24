@@ -11,13 +11,15 @@ Suito Ride je aplikace pro Windows pro jízdu po GPX trase na chytrém cyklotren
 
 ## Mapy a trasy
 
-Základní mapa a navigační pohled MapLibre fungují bez klíče. Navigace se otáčí ve směru jízdy a sleduje polohu jezdce. Volitelně lze zadat vlastní klíč pro statická panoramata Mapy.com, Google Street View (Maps Embed API) nebo Google 3D (Maps JavaScript API). Při zapnutí Google 3D se vlevo zobrazí přehled celé trasy. Klíče všech tří služeb najdeš v Nastavení. Poskytovatele panoramatu lze změnit u mapy i během jízdy. V Nastavení lze také upravit rozestup panoramat od 10 m (výchozí je 20 m), zobrazit velikost diskové mezipaměti a vyčistit ji.
+Základní mapa a navigační pohled MapLibre fungují bez klíče. Navigace se otáčí ve směru jízdy a sleduje polohu jezdce. Volitelně lze zadat vlastní klíč pro statická panoramata Mapy.com, Google Street View (Maps Embed API) nebo Google 3D (Maps JavaScript API). Při zapnutí Google 3D se vlevo zobrazí přehled celé trasy a ve 3D pohledu je vidět ikona silničního cyklisty. Klíče všech tří služeb najdeš v Nastavení. Poskytovatele panoramatu lze změnit u mapy i během jízdy. V Nastavení lze také upravit rozestup panoramat od 10 m (výchozí je 20 m), zobrazit velikost diskové mezipaměti a vyčistit ji.
 
-Na výškovém profilu lze vybrat nový začátek a cíl, obrátit směr a uložit vybraný úsek jako nový GPX. Aplikace ukazuje celkové stoupání i klesání a při jízdě náhled na příštích přibližně 500 metrů. Ujetá vzdálenost vychází z rychlosti hlášené trenažérem. Přesnost sklonu závisí na výškových údajích GPX.
+Na výškovém profilu lze vybrat nový začátek a cíl, obrátit směr a uložit vybraný úsek jako nový GPX. Aplikace ukazuje celkové stoupání i klesání a náhled na příštích 50 metrů. Kliknutím na náhled můžeš postupně přepnout dosah na 100, 150, 250 a 500 m. Velký graf při jízdě ukazuje rychlost, tep, kadenci a výkon. Ujetá vzdálenost vychází z rychlosti hlášené trenažérem. Přesnost sklonu závisí na výškových údajích GPX.
 
 ## Hrudní pás
 
 Přes **Hrudní pás** připojíš snímač s Bluetooth LE Heart Rate Service. Aktuální tep je vidět v přehledu jízdy. Naměřené hodnoty se ukládají do historie skutečné jízdy a do exportu TCX, který aplikace používá i při odesílání na Stravu a přes FitnessSyncer. Poslední úspěšně připojený pás si aplikace zapamatuje. Při příštím spuštění aplikace se pokusí pás vyhledat a připojit. Automatické vyhledávání pásu i trenažéru běží nejvýš pět minut. Ruční vyhledání nebo připojení zruší automatický pokus pro dané zařízení jen v aktuálním spuštění aplikace.
+
+V dialogu **SRAM AXS…** vyber přehazovačku a probuď ji krátkým stiskem AXS. Po připojení uvidíš baterii a na ověřeném modelu Force AXS také živý zadní převod. Číslo zůstává viditelné během jízdy. Výběr zařízení se obnoví při příštím spuštění. Pokud použiješ samostatné párování převodu, Windows uloží klíč chráněný pod tvým účtem.
 
 ## Dropbox
 

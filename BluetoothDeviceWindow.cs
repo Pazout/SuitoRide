@@ -13,24 +13,28 @@ internal sealed class BluetoothDeviceWindow : SuitoDialog
     readonly Dictionary<ulong,string> names=[];
     readonly ListBox list;
     readonly Button scan,connect,disconnect;
+    readonly Button? pair;
     readonly TextBlock status=new() { TextWrapping=TextWrapping.Wrap, Margin=new Thickness(0,8,0,0) };
     readonly DispatcherTimer scanTimer=new() { Interval=TimeSpan.FromSeconds(12) };
     BluetoothLEAdvertisementWatcher? watcher;
     readonly Guid? serviceFilter;
+    readonly string? namePrefix;
     readonly string scanningMessage, emptyMessage, selectionMessage, scanErrorMessage, connectingMessage;
     bool connected, connecting, automaticConnection;
     public event Action<BluetoothDeviceChoice>? ConnectRequested;
     public event Action? DisconnectRequested;
+    public event Action<BluetoothDeviceChoice>? PairRequested;
     public event Action? ManualScanRequested;
     public event Action? SearchStateChanged;
     public bool IsSearching => watcher!=null;
 
     public BluetoothDeviceWindow(string title,string scanLabel,string scanningMessage,string emptyMessage,
         string selectionMessage,string scanErrorMessage,string connectingMessage,Guid? serviceFilter=null,
-        BluetoothDeviceChoice? selected=null)
+        BluetoothDeviceChoice? selected=null,string? namePrefix=null,string? pairLabel=null)
     {
         Title=UiText.Get(title);
         this.serviceFilter=serviceFilter;
+        this.namePrefix=namePrefix;
         this.scanningMessage=scanningMessage;
         this.emptyMessage=emptyMessage;
         this.selectionMessage=selectionMessage;
@@ -65,6 +69,18 @@ internal sealed class BluetoothDeviceWindow : SuitoDialog
             ConnectRequested?.Invoke(selected);
         });
         disconnect=AddButton(ButtonIcons.Disconnect,"Odpojit",()=>DisconnectRequested?.Invoke());
+        if (pairLabel != null)
+        {
+            pair = new ActionButton(ButtonIcons.Connect, pairLabel, prompt: true)
+                { Margin = new Thickness(0,0,6,4), Padding = new Thickness(9,5,9,5) };
+            pair.Click += (_, _) =>
+            {
+                if (list.SelectedItem is not BluetoothDeviceChoice choice) return;
+                StopScan();
+                PairRequested?.Invoke(choice);
+            };
+            actions.Children.Add(pair);
+        }
         panel.Children.Add(actions);
         panel.Children.Add(status);
         Content=panel;
@@ -110,6 +126,7 @@ internal sealed class BluetoothDeviceWindow : SuitoDialog
         scan.IsEnabled=!connecting||automaticConnection;
         connect.IsEnabled=scan.IsEnabled&&list.SelectedItem is BluetoothDeviceChoice;
         disconnect.IsEnabled=connecting||connected;
+        if (pair != null) pair.IsEnabled = !connecting && list.SelectedItem is BluetoothDeviceChoice;
     }
 
     void StartScan()
@@ -160,6 +177,8 @@ internal sealed class BluetoothDeviceWindow : SuitoDialog
     void AdvertisementReceived(BluetoothLEAdvertisementWatcher sender,BluetoothLEAdvertisementReceivedEventArgs args)
     {
         var name=args.Advertisement.LocalName;
+        // SRAM advertises its name but need not advertise its Battery Service.
+        if (namePrefix != null && !name.StartsWith(namePrefix, StringComparison.OrdinalIgnoreCase)) return;
         bool advertisesService=serviceFilter is Guid service&&args.Advertisement.ServiceUuids.Contains(service);
         if(!advertisesService&&string.IsNullOrWhiteSpace(name))return;
         ulong address=args.BluetoothAddress;

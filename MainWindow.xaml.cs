@@ -32,7 +32,7 @@ public partial class MainWindow : Window
     bool riding,demo,ticking;
     readonly Stopwatch rideClock=new();
     double rideStartDistance;
-    public MainWindow(){InitializeComponent();InitializeProfileLegend();Language=System.Windows.Markup.XmlLanguage.GetLanguage(CultureInfo.CurrentCulture.IetfLanguageTag);Title=$"Suito Ride {typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.1.0"}";timer.Tick+=Tick;Closing+=HandleClosing;Loaded+=(_,_)=>{InitializeHeartRate();RestoreRiderName();InitMap();RestoreCatalog();RestoreLastRoute();RestorePanoramaSpacing();AutoStartPanorama();trainerRestoreTask=RestoreTrainerAsync();heartRateRestoreTask=RestoreHeartRateAsync();};Closed+=(_,_)=>{sharedRide?.Shutdown();trainerConnection?.Cancel();heartRateAttempt?.Cancel();DisconnectHeartRate();DisconnectCore();};}
+    public MainWindow(){InitializeComponent();InitializeProfileLegend();Language=System.Windows.Markup.XmlLanguage.GetLanguage(CultureInfo.CurrentCulture.IetfLanguageTag);Title=$"Suito Ride {typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.1.0"}";timer.Tick+=Tick;Closing+=HandleClosing;Loaded+=(_,_)=>{InitializeHeartRate();InitializeSram();RestoreRiderName();InitMap();RestoreCatalog();RestoreLastRoute();RestorePanoramaSpacing();AutoStartPanorama();trainerRestoreTask=RestoreTrainerAsync();heartRateRestoreTask=RestoreHeartRateAsync();};Closed+=(_,_)=>{sharedRide?.Shutdown();trainerConnection?.Cancel();heartRateAttempt?.Cancel();DisconnectHeartRate();StopSramRead();StopSramGear();DisconnectCore();};}
     bool installingUpdate;
     async void CheckForUpdates(object sender,RoutedEventArgs e)
     {
@@ -42,10 +42,11 @@ public partial class MainWindow : Window
         {
             Status.Text=UiText.Get("Kontroluji aktualizace na GitHubu…");
             var current=typeof(MainWindow).Assembly.GetName().Version!;
-            string? token=AppUpdates.LoadToken();
+            bool shared = MachineUpdates.IsSharedInstallation;
+            string? token = shared ? null : AppUpdates.LoadToken();
             AppUpdates.Update? update;
             try { update=await AppUpdates.FindAsync(current,token); }
-            catch(AppUpdates.GitHubAccessException)
+            catch(AppUpdates.GitHubAccessException) when (!shared)
             {
                 if(!IsLoaded)return;
                 var access=new GitHubUpdateAccessWindow {Owner=this};
@@ -62,8 +63,10 @@ public partial class MainWindow : Window
             if(!IsLoaded)return;
             if(update==null){Status.Text=UiText.Get("Používáš aktuální vydání Suito Ride.");return;}
             if(riding||starting||pendingRide!=null){Status.Text=UiText.Format($"Verze {update.Version} je dostupná. Instalace je možná po jízdě.");return;}
-            if(MessageBox.Show(this,
-                UiText.Format($"Stáhnout, nainstalovat a spustit Suito Ride {update.Version}? Nová verze se uloží do {AppUpdates.InstallFolder}."),
+            string prompt = shared
+                ? UiText.Format($"Aktualizovat společnou instalaci Suito Ride na {update.Version}? Windows požádá o oprávnění správce a aplikace se znovu spustí po dokončení.")
+                : UiText.Format($"Stáhnout, nainstalovat a spustit Suito Ride {update.Version}? Nová verze se uloží do {AppUpdates.InstallFolder}.");
+            if(MessageBox.Show(this, prompt,
                 "Aktualizace Suito Ride",MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes)
             {
                 Status.Text=UiText.Format($"Verze {update.Version} je dostupná.");
@@ -71,6 +74,14 @@ public partial class MainWindow : Window
             }
             installingUpdate=true;
             StartButton.IsEnabled=DemoButton.IsEnabled=false;
+            if (shared)
+            {
+                await MachineUpdates.StartAsync(update.Version);
+                installingUpdate = false;
+                Close();
+                return;
+            }
+
             Status.Text=UiText.Get("Stahuji a ověřuji aktualizaci…");
             string executable=await AppUpdates.InstallAsync(update,token);
             if(!IsLoaded)return;
@@ -145,13 +156,27 @@ public partial class MainWindow : Window
         DrawProfileRange(Profile,0,route.Count<2?0:route[^1].D);
         DrawZoomProfile();
     }
+    static readonly int[] ZoomDistances = [50, 100, 150, 250, 500];
+    int zoomDistanceIndex;
+
+    void ChangeZoomProfileRange(object sender, RoutedEventArgs e)
+    {
+        zoomDistanceIndex = (zoomDistanceIndex + 1) % ZoomDistances.Length;
+        UpdateZoomProfileLabel();
+        DrawZoomProfile();
+    }
+
+    void UpdateZoomProfileLabel() =>
+        ZoomProfileLabel.Text = UiText.Format($"SKLON · DALŠÍCH {ZoomDistances[zoomDistanceIndex]} m");
+
     void DrawZoomProfile()
     {
-        if(route.Count<2){ZoomProfile.Children.Clear();return;}
+        if (route.Count < 2) { ZoomProfile.Children.Clear(); return; }
         double meters = DisplayDistance;
-        double start=Math.Max(0,meters-30),end=Math.Min(route[^1].D,meters+500);
-        if(end-start<1)start=Math.Max(0,end-100);
-        DrawProfileRange(ZoomProfile,start,end);
+        int range = ZoomDistances[zoomDistanceIndex];
+        double end = Math.Min(route[^1].D, meters + range);
+        double start = end > meters ? meters : Math.Max(0, end - range);
+        DrawProfileRange(ZoomProfile, start, end);
     }
     void DrawProfileRange(System.Windows.Controls.Canvas canvas,double start,double end)
     {
@@ -373,10 +398,10 @@ public partial class MainWindow : Window
             distance=Math.Min(route[^1].D,distance+speed/3.6*dt);
             double? sampleSpeed = demo || (now-lastData).TotalSeconds<=5 ? speed : null;
             int? sampleHeartRate = CurrentHeartRate;
-            AddProfileTelemetry(distance, sampleSpeed, sampleHeartRate);
-            session?.AddSample(distance, sampleSpeed,
-                (now-cadenceReceived).TotalSeconds<=5?currentCadence:null,
-                (now-powerReceived).TotalSeconds<=5?currentPower:null,sampleHeartRate,CurrentRidePosition());
+            double? sampleCadence = (now - cadenceReceived).TotalSeconds <= 5 ? currentCadence : null;
+            double? samplePower = (now - powerReceived).TotalSeconds <= 5 ? currentPower : null;
+            AddProfileTelemetry(distance, sampleSpeed, sampleHeartRate, sampleCadence, samplePower);
+            session?.AddSample(distance, sampleSpeed, sampleCadence, samplePower, sampleHeartRate, CurrentRidePosition());
             double grade=SlopeAt(distance);UpdateView();
             if(!demo&&(double.IsNaN(lastGrade)||Math.Abs(grade-lastGrade)>=0.5)){
                 short raw=(short)Math.Round(grade*100);await Command([0x11,0,0,(byte)(raw&255),(byte)((raw>>8)&255),40,51]);lastGrade=grade;
@@ -776,7 +801,7 @@ public partial class MainWindow : Window
         if(!active)rideClock.Stop();
         SetFullscreen(active);
         SetupPanel.Visibility=active?Visibility.Collapsed:Visibility.Visible;
-        TrainerButton.Visibility=HeartRateButton.Visibility=SetupPanel.Visibility;
+        TrainerButton.Visibility=HeartRateButton.Visibility=SramButton.Visibility=SetupPanel.Visibility;
         bool fitMainMap=active && navigationMode;
         if(fitMainMap)RotateMap.IsChecked=false;
         SendMap(new{type="ride-layout",active,fitMainMap});

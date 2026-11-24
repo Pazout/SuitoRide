@@ -58,6 +58,7 @@
     <WrapPanel x:Name="MapControls" Grid.Row="1">
       <local:ActionButton x:Name="TrainerButton" Content="{local:Ui 'Trenažér', Prompt=True}" Icon="{x:Static local:ButtonIcons.Bike}" Background="#12485A" Tag="#185D72" Click="OpenTrainer"/>
       <local:ActionButton x:Name="HeartRateButton" Content="{local:Ui 'Hrudní pás', Prompt=True}" Icon="{x:Static local:ButtonIcons.Heart}" Background="#722D49" Tag="#8D3859" Click="OpenHeartRate"/>
+      <local:ActionButton x:Name="SramButton" Content="{local:Ui 'SRAM AXS', Prompt=True}" Icon="{x:Static local:ButtonIcons.Battery}" Click="OpenSram"/>
       <local:ActionButton Content="{local:Ui 'Zobrazit celou trasu'}" Icon="{x:Static local:ButtonIcons.Fit}" ToolTip="{local:Ui 'Platí pro hlavní mapu'}" Click="FitMap"/>
       <local:ActionButton Content="{local:Ui 'Sledovat jezdce'}" Icon="{x:Static local:ButtonIcons.Follow}" ToolTip="{local:Ui 'Platí pro hlavní mapu'}" Click="FollowRider"/>
       <local:ActionButton Content="{local:Ui 'Navigační pohled'}" Icon="{x:Static local:ButtonIcons.Navigate}" Click="ShowNavigation" ToolTip="{local:Ui 'Nakloněná mapa ve směru jízdy'}"/>
@@ -72,28 +73,38 @@
       <CheckBox x:Name="RotateMap" IsChecked="True" Content="{local:Ui 'Mapa ve směru jízdy'}" ToolTip="{local:Ui 'Platí pro hlavní mapu'}" Foreground="White" VerticalAlignment="Center" Margin="0,0,6,4" Checked="SetMapRotation" Unchecked="SetMapRotation"/>
     </WrapPanel>
     <wv:WebView2 x:Name="MapView" Grid.Row="2" Margin="0,0,0,6"/>
-    <WrapPanel Grid.Row="3" Margin="0,0,0,3">
-      <TextBlock Text="{local:Ui 'Sklon trasy'}" FontWeight="SemiBold" Margin="0,0,10,0" VerticalAlignment="Center"/>
-      <ItemsControl x:Name="GradeLegend" VerticalAlignment="Center">
-        <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-        <ItemsControl.ItemTemplate>
-          <DataTemplate>
-            <StackPanel Orientation="Horizontal" Margin="0,0,10,0">
-              <Border Background="{Binding Color}" Width="10" Height="10" CornerRadius="2" Margin="0,0,4,0"/>
-              <TextBlock Text="{Binding Label}" FontSize="12"/>
-            </StackPanel>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
-      <StackPanel Orientation="Horizontal" Margin="0,0,10,0" VerticalAlignment="Center">
-        <Line x:Name="SpeedLegendLine" X1="0" X2="18" Y1="1" Y2="1" StrokeThickness="2" VerticalAlignment="Center" Margin="0,0,4,0"/>
-        <TextBlock x:Name="SpeedLegendLabel" FontSize="12"/>
+    <Viewbox Grid.Row="3" Margin="0,0,0,3" StretchDirection="DownOnly" HorizontalAlignment="Left">
+      <StackPanel Orientation="Horizontal">
+        <TextBlock Text="{local:Ui 'Sklon trasy'}" FontWeight="SemiBold" Margin="0,0,10,0" VerticalAlignment="Center"/>
+        <ItemsControl x:Name="GradeLegend" VerticalAlignment="Center">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Orientation="Horizontal" Margin="0,0,10,0">
+                <Border Background="{Binding Color}" Width="10" Height="10" CornerRadius="2" Margin="0,0,4,0"/>
+                <TextBlock Text="{Binding Label}" FontSize="12"/>
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <StackPanel Orientation="Horizontal" Margin="0,0,10,0" VerticalAlignment="Center">
+          <Line x:Name="SpeedLegendLine" X1="0" X2="18" Y1="1" Y2="1" StrokeThickness="2" VerticalAlignment="Center" Margin="0,0,4,0"/>
+          <TextBlock x:Name="SpeedLegendLabel" FontSize="12"/>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <Line x:Name="HeartRateLegendLine" X1="0" X2="18" Y1="1" Y2="1" StrokeThickness="2" VerticalAlignment="Center" Margin="0,0,4,0"/>
+          <TextBlock x:Name="HeartRateLegendLabel" FontSize="12"/>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Margin="10,0,10,0" VerticalAlignment="Center">
+          <Line x:Name="CadenceLegendLine" X1="0" X2="18" Y1="1" Y2="1" StrokeThickness="2" VerticalAlignment="Center" Margin="0,0,4,0"/>
+          <TextBlock x:Name="CadenceLegendLabel" FontSize="12"/>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <Line x:Name="PowerLegendLine" X1="0" X2="18" Y1="1" Y2="1" StrokeThickness="2" VerticalAlignment="Center" Margin="0,0,4,0"/>
+          <TextBlock x:Name="PowerLegendLabel" FontSize="12"/>
+        </StackPanel>
       </StackPanel>
-      <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-        <Line x:Name="HeartRateLegendLine" X1="0" X2="18" Y1="1" Y2="1" StrokeThickness="2" VerticalAlignment="Center" Margin="0,0,4,0"/>
-        <TextBlock x:Name="HeartRateLegendLabel" FontSize="12"/>
-      </StackPanel>
-    </WrapPanel>
+    </Viewbox>
     <Canvas x:Name="Profile" Grid.Row="4" Background="#1c2c38" SizeChanged="DrawProfile" ClipToBounds="True" Focusable="True"
             MouseLeftButtonDown="BeginProfilePreview" MouseMove="MoveProfilePreview" MouseLeftButtonUp="FinishProfilePreview"
             LostMouseCapture="RefreshPreviewPanorama"
@@ -115,10 +126,26 @@
             <TextBlock x:Name="HeartRate" Text="— bpm" FontSize="20" ToolTip="{Binding ToolTip, ElementName=HeartRateButton}"/>
             <TextBlock x:Name="HeartRateActivity" Visibility="Collapsed" Foreground="#F5BE5B" TextWrapping="Wrap" TextTrimming="None"/>
           </StackPanel>
-          <StackPanel><TextBlock Text="{local:Ui 'ČAS JÍZDY'}" Foreground="#99b2bf"/><TextBlock x:Name="Elapsed" Text="00:00:00" FontSize="20"/></StackPanel><Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left"><StackPanel><TextBlock Text="{local:Ui 'SKLON · DALŠÍCH 500 m'}" Foreground="#99b2bf"/><StackPanel Orientation="Horizontal"><TextBlock x:Name="Grade" Text="— %" FontSize="20" VerticalAlignment="Center"/><Canvas x:Name="ZoomProfile" Width="110" Height="44" Background="#1c2c38" Margin="8,0,0,0" ClipToBounds="True" SizeChanged="DrawProfile" ToolTip="{local:Ui 'Profil následujících 500 metrů; bílá čára označuje aktuální polohu.'}"/></StackPanel></StackPanel></Viewbox>
+          <StackPanel><TextBlock Text="{local:Ui 'ČAS JÍZDY'}" Foreground="#99b2bf"/><TextBlock x:Name="Elapsed" Text="00:00:00" FontSize="20"/></StackPanel>
+          <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left">
+            <StackPanel>
+              <TextBlock x:Name="ZoomProfileLabel" Foreground="#99b2bf"/>
+              <StackPanel Orientation="Horizontal">
+                <TextBlock x:Name="Grade" Text="— %" FontSize="20" VerticalAlignment="Center"/>
+                <Button Click="ChangeZoomProfileRange" Padding="0" Margin="8,0,0,0" Background="#1c2c38"
+                        AutomationProperties.Name="{Binding Text, ElementName=ZoomProfileLabel}"
+                        ToolTip="{local:Ui 'Kliknutím změň dosah profilu. Bílá čára označuje aktuální polohu.'}">
+                  <Canvas x:Name="ZoomProfile" Width="108" Height="42" ClipToBounds="True" SizeChanged="DrawProfile"/>
+                </Button>
+              </StackPanel>
+            </StackPanel>
+          </Viewbox>
         </UniformGrid>
         <TextBlock x:Name="RideInfo" Text="{local:Ui 'Pro skutečnou jízdu připojte trenažér.'}" Foreground="#99b2bf" Margin="0,2,0,0" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
-        <TextBlock x:Name="Status" Text="{local:Ui 'Načtěte trasu a vyhledejte trenažér.'}" Foreground="#9ed4c7" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+        <DockPanel>
+          <TextBlock x:Name="SramBatteryStatus" DockPanel.Dock="Right" Margin="12,0,0,0" Foreground="#9ed4c7" Visibility="Collapsed"/>
+          <TextBlock x:Name="Status" Text="{local:Ui 'Načtěte trasu a vyhledejte trenažér.'}" Foreground="#9ed4c7" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+        </DockPanel>
       </StackPanel>
       <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0">
         <local:ActionButton x:Name="StartButton" Content="{local:Ui 'Zahájit jízdu', Prompt=True}" Icon="{x:Static local:ButtonIcons.Play}" Background="#07518a" Tag="#0866a7" FontWeight="SemiBold" Click="StartRide"/>
