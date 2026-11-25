@@ -1,3 +1,5 @@
+using System.IO;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Media;
 
@@ -5,7 +7,45 @@ namespace SuitoRide;
 
 public partial class MainWindow
 {
-    ReferenceRide? referenceRide;
+    ReferenceRide? referenceRide, savedReferenceRide;
+
+    string ReferenceRidePath => Path.Combine(Path.GetDirectoryName(settingsFile)!,
+        "reference-rides", RouteFingerprint() + ".json");
+
+    void ResetReferenceRide()
+    {
+        referenceRide = savedReferenceRide = null;
+        RefreshSavedReferenceButton();
+        RefreshReferenceRide();
+    }
+
+    void OfferSavedReferenceRide()
+    {
+        try
+        {
+            savedReferenceRide = ReferenceRide.Load(ReferenceRidePath, route[^1].D);
+            RefreshSavedReferenceButton();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidDataException)
+        {
+            Status.Text = UiText.Get("Uloženou referenční jízdu se nepodařilo načíst.");
+        }
+    }
+
+    void RefreshSavedReferenceButton()
+    {
+        SavedReferenceButton.Visibility = savedReferenceRide == null ? Visibility.Collapsed : Visibility.Visible;
+        SavedReferenceButton.ToolTip = savedReferenceRide?.Name;
+    }
+
+    void UseSavedReferenceRide(object sender, RoutedEventArgs e)
+    {
+        if (riding || starting || ticking || savedReferenceRide == null) return;
+        referenceRide = savedReferenceRide;
+        savedReferenceRide = null;
+        RefreshSavedReferenceButton();
+        RefreshReferenceRide();
+    }
 
     void OpenReferenceRide(object sender, RoutedEventArgs e)
     {
@@ -16,11 +56,26 @@ public partial class MainWindow
             return;
         }
         var course = route.Select(p => new ReferenceRoutePoint(p.Lat, p.Lon, p.D)).ToArray();
-        var window = new ReferenceRideWindow(historyStore, referenceRide, source => ReferenceRide.Match(source, course))
+        var window = new ReferenceRideWindow(historyStore, referenceRide, savedReferenceRide != null,
+            source => ReferenceRide.Match(source, course))
             { Owner = this };
         if (window.ShowDialog() == true)
         {
-            referenceRide = window.SelectedReference;
+            var selected = window.SelectedReference;
+            try
+            {
+                if (selected == null) File.Delete(ReferenceRidePath);
+                else selected.Save(ReferenceRidePath);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Status.Text = UiText.Get("Uloženou referenční jízdu se nepodařilo změnit.");
+                if (selected == null) return;
+            }
+
+            referenceRide = selected;
+            savedReferenceRide = null;
+            RefreshSavedReferenceButton();
             RefreshReferenceRide();
         }
     }

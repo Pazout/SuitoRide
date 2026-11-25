@@ -134,6 +134,7 @@ public partial class MainWindow : Window
             UpdateRouteInfo();
             Status.Text=UiText.Get("Trasa načtena.");
             if(!restoring)RememberLastRoute(routeSourcePath);lastStreetDistance=double.NaN;UpdateView();SendRoute();UpdateStreetView(true);
+            OfferSavedReferenceRide();
         }catch(Exception ex){
             if(restoring)Status.Text=UiText.Get("Poslední GPX trasu se nepodařilo načíst: ")+ex.Message;
             else MessageBox.Show(UiText.Get("GPX se nepodařilo načíst. Každý bod musí obsahovat výšku.\n")+ex.Message,UiText.Get("Načtení trasy"));
@@ -146,8 +147,7 @@ public partial class MainWindow : Window
         ResetProfileTelemetry();
         route.Clear();
         route.AddRange(points);
-        referenceRide = null;
-        RefreshReferenceRide();
+        ResetReferenceRide();
     }
     static double Dist(double a,double b,double c,double d){double r=Math.PI/180,x=(c-a)*r,y=(d-b)*r,h=Math.Pow(Math.Sin(x/2),2)+Math.Cos(a*r)*Math.Cos(c*r)*Math.Pow(Math.Sin(y/2),2);return 12742000*Math.Asin(Math.Sqrt(Math.Clamp(h,0,1)));}
     double Elev(double d){d=Math.Clamp(d,0,route[^1].D);int i=route.FindIndex(p=>p.D>=d);if(i<=0)return route[0].Ele;var a=route[i-1];var b=route[i];return a.Ele+(b.Ele-a.Ele)*(d-a.D)/(b.D-a.D);}
@@ -1040,6 +1040,7 @@ public partial class MainWindow : Window
             UpdateRouteInfo();
             UpdateView();SendRoute();UpdateStreetView(true);
             Status.Text=UiText.Get("Upravená trasa je připravena k jízdě.");
+            OfferSavedReferenceRide();
             if(MessageBox.Show(this,UiText.Get("Chceš upravenou trasu uložit jako nový GPX soubor?"),UiText.Get("Upravit trasu"),MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes)return;
             var save=new SaveFileDialog{Filter="GPX trasa (*.gpx)|*.gpx",DefaultExt=".gpx",AddExtension=true,FileName=RouteName.Text+".gpx",OverwritePrompt=true};
             if(save.ShowDialog(this)!=true){Status.Text=UiText.Get("Trasa je upravená pro tuto jízdu; GPX nebyl uložen.");return;}

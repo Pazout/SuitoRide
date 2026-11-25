@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.IO;
+using System.Text.Json;
 using System.Xml;
 using System.Xml.Linq;
 
@@ -61,6 +62,7 @@ internal readonly record struct ReferenceRoutePoint(double Latitude, double Long
 internal sealed class ReferenceRide
 {
     readonly record struct Sample(double Seconds, double Meters);
+    sealed record Recording(string Name, Sample[] Samples);
     readonly Sample[] samples;
     public string Name { get; }
 
@@ -68,6 +70,49 @@ internal sealed class ReferenceRide
     {
         Name = name;
         this.samples = samples;
+    }
+
+    public void Save(string path)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        string temp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            using (var stream = File.Create(temp))
+                JsonSerializer.Serialize(stream, new Recording(Name, samples));
+            File.Move(temp, path, overwrite: true);
+        }
+        finally
+        {
+            File.Delete(temp);
+        }
+    }
+
+    public static ReferenceRide? Load(string path, double routeLength)
+    {
+        Recording? recording;
+        try
+        {
+            using var stream = File.OpenRead(path);
+            recording = JsonSerializer.Deserialize<Recording>(stream);
+        }
+        catch (IOException ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+        {
+            return null;
+        }
+
+        if (recording == null || string.IsNullOrWhiteSpace(recording.Name) ||
+            recording.Samples is not { Length: >= 2 } points ||
+            points[0] != new Sample(0, 0) || points[^1].Meters != routeLength)
+            throw ReferenceSource.InvalidRecording();
+
+        for (int i = 1; i < points.Length; i++)
+        {
+            if (!double.IsFinite(points[i].Seconds) || points[i].Seconds <= points[i - 1].Seconds ||
+                !double.IsFinite(points[i].Meters) || points[i].Meters < points[i - 1].Meters)
+                throw ReferenceSource.InvalidRecording();
+        }
+        return new(recording.Name, points);
     }
 
     public static ReferenceRide Match(ReferenceSource source, IReadOnlyList<ReferenceRoutePoint> route)

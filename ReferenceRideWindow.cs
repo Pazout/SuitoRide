@@ -21,7 +21,8 @@ internal sealed class ReferenceRideWindow : SuitoDialog
 
     public ReferenceRide? SelectedReference { get; private set; }
 
-    public ReferenceRideWindow(RideHistoryStore store, ReferenceRide? current, Func<ReferenceSource, ReferenceRide> match)
+    public ReferenceRideWindow(RideHistoryStore store, ReferenceRide? current, bool hasSaved,
+        Func<ReferenceSource, ReferenceRide> match)
     {
         this.match = match;
 
@@ -55,7 +56,7 @@ internal sealed class ReferenceRideWindow : SuitoDialog
             if (open.ShowDialog(this) == true) _ = SelectAsync(() => ReferenceSource.FromTcx(open.FileName));
         }, prompt: true);
         clear = Button(ButtonIcons.Close, "Odebrat referenci", () => { DialogResult = true; });
-        clear.IsEnabled = current != null;
+        clear.IsEnabled = current != null || hasSaved;
         DockPanel.SetDock(actions, Dock.Bottom);
         panel.Children.Add(actions);
 

@@ -21,6 +21,7 @@
           <local:ActionButton Content="{local:Ui 'Nastavení', Prompt=True}" Icon="{x:Static local:ButtonIcons.Settings}" Click="ShowMapSettings"/>
           <local:ActionButton Content="{local:Ui 'Společná jízda', Prompt=True}" Icon="{x:Static local:ButtonIcons.Group}" Click="OpenSharedRide"/>
           <local:ActionButton Content="{local:Ui 'Referenční jízda', Prompt=True}" Icon="{x:Static local:ButtonIcons.Follow}" Click="OpenReferenceRide"/>
+          <local:ActionButton x:Name="SavedReferenceButton" Content="{local:Ui 'Použít uloženou referenci'}" Icon="{x:Static local:ButtonIcons.Check}" Click="UseSavedReferenceRide" Visibility="Collapsed"/>
           <local:ActionButton Content="{local:Ui 'Zkontrolovat aktualizace', Prompt=True}" Icon="{x:Static local:ButtonIcons.Update}" Click="CheckForUpdates"/>
           <local:ActionButton x:Name="RetrySaveButton" Content="{local:Ui 'Uložit čekající jízdu'}" Icon="{x:Static local:ButtonIcons.Save}" Click="RetrySaveRide" Visibility="Collapsed"/>
         </StackPanel>
