@@ -412,6 +412,8 @@
   "Fotky z {0} se nepodařilo načíst.": "{0} の写真を読み込めませんでした。",
   "Zapnutý zdroj fotek: {0}. Pokrytí závisí na trase.": "写真の提供元: {0}。写真の有無はルートによります。",
   "Fotky z trasy se nepodařilo uložit.": "ルート写真を保存できませんでした。",
+  "Automaticky ukládat fotky z Mapillary": "Mapillary の写真を自動保存する",
+  "Nastavení ukládání fotek se nepodařilo uložit.": "写真の保存設定を保存できませんでした。",
   "Fotky z trasy": "ルートの写真",
   "Tato jízda nemá uložené fotky z trasy.": "このライドには保存済みのルート写真がありません。",
   "Složku s fotkami se nepodařilo otevřít.": "写真フォルダーを開けませんでした。",

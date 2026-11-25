@@ -28,6 +28,7 @@ internal sealed class MapSettingsWindow : SuitoDialog
         panel.Children.Add(CreateRiderNameSettings(riderName,saveRiderName));
         panel.Children.Add(new Separator { Margin=new Thickness(0,8,0,8) });
         panel.Children.Add(new MapApiKeySettings(keyProvider));
+        panel.Children.Add(CreateRidePhotoSettings());
         panel.Children.Add(new Separator { Margin=new Thickness(0,8,0,8) });
         var spacingRow=new StackPanel { Orientation=Orientation.Horizontal, Margin=new Thickness(0,0,0,8) };
         var label=new Label { Content=UiText.Get("Rozestup snímků (m):"), VerticalAlignment=VerticalAlignment.Center };
@@ -78,6 +79,42 @@ internal sealed class MapSettingsWindow : SuitoDialog
             catch(Exception ex){cacheStatus.Text=UiText.Get("Mezipaměť nelze vyčistit: ")+ex.Message;}
             finally{clear.IsEnabled=true;}
         };
+    }
+
+    static StackPanel CreateRidePhotoSettings()
+    {
+        bool saved = MapillaryRidePhotoPreference.Load();
+        var panel = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
+        var toggle = new CheckBox
+        {
+            Content = UiText.Get("Automaticky ukládat fotky z Mapillary"),
+            IsChecked = saved
+        };
+        var status = new TextBlock { TextWrapping = TextWrapping.Wrap, Visibility = Visibility.Collapsed };
+        panel.Children.Add(toggle);
+        panel.Children.Add(status);
+        toggle.Checked += Save;
+        toggle.Unchecked += Save;
+        return panel;
+
+        void Save(object sender, RoutedEventArgs e)
+        {
+            bool enabled = toggle.IsChecked == true;
+            if (enabled == saved) return;
+
+            try
+            {
+                MapillaryRidePhotoPreference.Save(enabled);
+                saved = enabled;
+                status.Visibility = Visibility.Collapsed;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                toggle.IsChecked = saved;
+                status.Text = UiText.Get("Nastavení ukládání fotek se nepodařilo uložit.");
+                status.Visibility = Visibility.Visible;
+            }
+        }
     }
 
     static StackPanel CreateRiderNameSettings(string currentName, Action<string> saveName)

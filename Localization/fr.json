@@ -412,6 +412,8 @@
   "Fotky z {0} se nepodařilo načíst.": "Impossible de charger les photos de {0}.",
   "Zapnutý zdroj fotek: {0}. Pokrytí závisí na trase.": "Source des photos : {0}. La couverture dépend du parcours.",
   "Fotky z trasy se nepodařilo uložit.": "Impossible d’enregistrer les photos du parcours.",
+  "Automaticky ukládat fotky z Mapillary": "Enregistrer automatiquement les photos Mapillary",
+  "Nastavení ukládání fotek se nepodařilo uložit.": "Impossible d’enregistrer le réglage des photos.",
   "Fotky z trasy": "Photos du parcours",
   "Tato jízda nemá uložené fotky z trasy.": "Aucune photo de parcours enregistrée pour cette sortie.",
   "Složku s fotkami se nepodařilo otevřít.": "Impossible d’ouvrir le dossier des photos.",

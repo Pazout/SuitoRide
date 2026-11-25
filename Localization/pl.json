@@ -412,6 +412,8 @@
   "Fotky z {0} se nepodařilo načíst.": "Nie udało się wczytać zdjęć z {0}.",
   "Zapnutý zdroj fotek: {0}. Pokrytí závisí na trase.": "Źródło zdjęć: {0}. Dostępność zależy od trasy.",
   "Fotky z trasy se nepodařilo uložit.": "Nie udało się zapisać zdjęć z trasy.",
+  "Automaticky ukládat fotky z Mapillary": "Automatycznie zapisuj zdjęcia z Mapillary",
+  "Nastavení ukládání fotek se nepodařilo uložit.": "Nie udało się zapisać ustawienia zdjęć.",
   "Fotky z trasy": "Zdjęcia z trasy",
   "Tato jízda nemá uložené fotky z trasy.": "Ta jazda nie ma zapisanych zdjęć z trasy.",
   "Složku s fotkami se nepodařilo otevřít.": "Nie udało się otworzyć folderu ze zdjęciami.",

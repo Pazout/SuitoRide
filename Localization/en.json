@@ -412,6 +412,8 @@
   "Fotky z {0} se nepodařilo načíst.": "Could not load photos from {0}.",
   "Zapnutý zdroj fotek: {0}. Pokrytí závisí na trase.": "Photo source: {0}. Coverage depends on the route.",
   "Fotky z trasy se nepodařilo uložit.": "Could not save the route photos.",
+  "Automaticky ukládat fotky z Mapillary": "Automatically save Mapillary photos",
+  "Nastavení ukládání fotek se nepodařilo uložit.": "Could not save the photo preference.",
   "Fotky z trasy": "Route photos",
   "Tato jízda nemá uložené fotky z trasy.": "This ride has no saved route photos.",
   "Složku s fotkami se nepodařilo otevřít.": "Could not open the photo folder.",

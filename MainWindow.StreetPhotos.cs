@@ -143,6 +143,8 @@ public partial class MainWindow
 
     static StreetRidePhotos? LoadRidePhotoCapture()
     {
+        if (!MapillaryRidePhotoPreference.Load()) return null;
+
         try
         {
             var token = PanoramaKeyStore.Load(MapillaryProvider);
