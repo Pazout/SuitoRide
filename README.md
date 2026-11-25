@@ -39,6 +39,13 @@ Před odesláním na Stravu nebo Intervals.icu lze upravit název a přidat popi
 
 Pro společnou jízdu použijte shodnou GPX trasu včetně směru a vybraného úseku. Hostitel může použít přiložený server na portu TCP 5077 v důvěryhodné místní nebo soukromé VPN síti. Ostatní zadají jeho adresu a kód místnosti. Každý jezdec spouští a ovládá vlastní jízdu; v aplikaci vidíte vzájemnou polohu.
 
+### Fotky z trasy z Mapillary
+
+1. V **Nastavení → Klíče pro panoramata a 3D mapy → Mapillary** vlož a ulož svůj **Client Token**. Mapillary je volitelné. Bez tokenu aplikace vyhledávání fotek přeskočí. [Mapillary Developers](https://www.mapillary.com/dashboard/developers)
+2. Během skutečné jízdy aplikace na pozadí vyhledá až dvě různé fotky poblíž GPX trasy, jednu krátce po startu a druhou před cílem. Fotky se ukládají k jízdě podle dostupnosti snímků. Při jízdě můžeš mít zapnuté třeba Google 3D nebo navigační pohled.
+3. Automatické ukládání vypneš odškrtnutím **Nastavení → Automaticky ukládat fotky z Mapillary**. Ve výchozím stavu je volba zapnutá. Změna platí od příští jízdy a zůstane uložená i po restartu. Client Token můžeš dál používat pro zobrazení pohledu Mapillary.
+4. Po jízdě otevři **Historie tréninků**, vyber jízdu a klikni na **Fotky z trasy…** Tlačítko otevře složku s uloženými JPG. Každá fotka uvádí autora, odkaz na originál a licenci. K aktivitě na Stravě můžeš JPG přiložit ručně. [Licence CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
+
 ## Nastavení a vývoj
 
 Tlačítko **Zkontrolovat aktualizace** nabídne novější veřejný balíček z GitHubu. Ve společné instalaci ve složce `Program Files\SuitoRide` se aplikace aktualizuje na místě po potvrzení správcem a zástupce ve Startu dál funguje. Osobní aktualizace se ukládají do `%LOCALAPPDATA%\SuitoRide\installed`. Nastavení, historie a webová data jsou v adresáři `%LOCALAPPDATA%\SuitoRide` pro každý účet Windows. Klíče a přístupové tokeny se ukládají zašifrované pro aktuální účet Windows.
