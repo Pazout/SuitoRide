@@ -13,7 +13,7 @@ internal sealed class HistoryWindow : SuitoDialog
     readonly IntervalsIcuService intervals = new();
     readonly DataGrid grid;
     readonly TextBlock summary,status;
-    readonly Button send,connect,forget,export,sendFitness,connectFitness,sendIntervals,connectIntervals;
+    readonly Button send,connect,forget,export,routePhotos,sendFitness,connectFitness,sendIntervals,connectIntervals;
     public HistoryWindow(RideHistoryStore store)
     {
         this.store=store;
@@ -26,8 +26,9 @@ internal sealed class HistoryWindow : SuitoDialog
         connect=new ActionButton(ButtonIcons.Connect, "Propojit Stravu", prompt: true){ Padding=new Thickness(9,5,9,5),Margin=new Thickness(0,0,8,5)};
         send=new ActionButton(ButtonIcons.Upload, "Odeslat vybranou jízdu na Stravu", prompt: true){ Padding=new Thickness(9,5,9,5),Margin=new Thickness(0,0,8,5)};
         export=new ActionButton(ButtonIcons.Save, "Uložit TCX", prompt: true){ Padding=new Thickness(9,5,9,5),Margin=new Thickness(0,0,8,5)};
+        routePhotos=new ActionButton(ButtonIcons.Panorama, "Fotky z trasy", prompt: true){ Padding=new Thickness(9,5,9,5),Margin=new Thickness(0,0,8,5)};
         forget=new ActionButton(ButtonIcons.Disconnect, "Odebrat uložené spojení", prompt: true){ Padding=new Thickness(9,5,9,5),Margin=new Thickness(0,0,8,5)};
-        actions.Children.Add(connect);actions.Children.Add(send);actions.Children.Add(export);actions.Children.Add(forget);
+        actions.Children.Add(connect);actions.Children.Add(send);actions.Children.Add(export);actions.Children.Add(routePhotos);actions.Children.Add(forget);
         connectFitness=new ActionButton(ButtonIcons.Settings, "Nastavit FitnessSyncer", prompt: true){ Padding=new Thickness(9,5,9,5),Margin=new Thickness(0,0,8,5)};
         sendFitness=new ActionButton(ButtonIcons.Upload, "Odeslat přes FitnessSyncer"){ Padding=new Thickness(9,5,9,5),Margin=new Thickness(0,0,8,5)};
         actions.Children.Add(connectFitness);actions.Children.Add(sendFitness);
@@ -56,7 +57,7 @@ internal sealed class HistoryWindow : SuitoDialog
             if(MessageBox.Show(this,UiText.Get("Odebrat uložené propojení se Stravou z tohoto počítače?"),"Strava",MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes)return;
             try{strava.Forget();RefreshStatus();}catch(Exception ex){status.Text=UiText.Get("Spojení nelze odebrat: ")+ex.Message;}
         };
-        send.Click+=SendRide;export.Click+=ExportRide;
+        send.Click+=SendRide;export.Click+=ExportRide;routePhotos.Click+=OpenRoutePhotos;
         connectFitness.Click+=(_,_)=>{new FitnessSyncerConnectWindow(fitnessSyncer){Owner=this}.ShowDialog();RefreshStatus();};
         sendFitness.Click+=SendFitnessRide;
         connectIntervals.Click += (_, _) =>
@@ -110,7 +111,7 @@ internal sealed class HistoryWindow : SuitoDialog
     }
 
     void SetActionsEnabled(bool enabled) =>
-        send.IsEnabled=connect.IsEnabled=forget.IsEnabled=export.IsEnabled=sendFitness.IsEnabled=connectFitness.IsEnabled=sendIntervals.IsEnabled=connectIntervals.IsEnabled=enabled;
+        send.IsEnabled=connect.IsEnabled=forget.IsEnabled=export.IsEnabled=routePhotos.IsEnabled=sendFitness.IsEnabled=connectFitness.IsEnabled=sendIntervals.IsEnabled=connectIntervals.IsEnabled=enabled;
     void ExportRide(object s,RoutedEventArgs e)
     {
         if(grid.SelectedItem is not RideRecord ride){status.Text=UiText.Get("Nejprve vyber jízdu.");return;}
@@ -119,6 +120,29 @@ internal sealed class HistoryWindow : SuitoDialog
         try{File.WriteAllBytes(dlg.FileName,TcxExporter.Create(ride));status.Text=UiText.Get("Soubor TCX byl uložen.");}
         catch(Exception ex){status.Text=UiText.Get("TCX nelze uložit: ")+ex.Message;}
     }
+    void OpenRoutePhotos(object sender, RoutedEventArgs e)
+    {
+        if (grid.SelectedItem is not RideRecord ride)
+        {
+            status.Text = UiText.Get("Nejprve vyber jízdu.");
+            return;
+        }
+        var folder = store.PhotoFolder(ride.Id);
+        try
+        {
+            if (!Directory.Exists(folder) || !Directory.EnumerateFiles(folder, "*.jpg").Any())
+            {
+                status.Text = UiText.Get("Tato jízda nemá uložené fotky z trasy.");
+                return;
+            }
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(folder) { UseShellExecute = true })?.Dispose();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
+        {
+            status.Text = UiText.Get("Složku s fotkami se nepodařilo otevřít.");
+        }
+    }
+
     async void SendRide(object s,RoutedEventArgs e)
     {
         if(grid.SelectedItem is not RideRecord ride){status.Text=UiText.Get("Nejprve vyber jízdu.");return;}

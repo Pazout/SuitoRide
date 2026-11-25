@@ -71,6 +71,7 @@
         <ComboBoxItem Tag="off" Content="{local:Ui 'Panorama vypnuto'}"/>
         <ComboBoxItem Tag="mapy" Content="Mapy.com"/>
         <ComboBoxItem Tag="google" Content="Google Street View"/>
+        <ComboBoxItem Tag="mapillary" Content="Mapillary"/>
       </ComboBox>
       <CheckBox x:Name="RotateMap" IsChecked="True" Content="{local:Ui 'Mapa ve směru jízdy'}" ToolTip="{local:Ui 'Platí pro hlavní mapu'}" Foreground="White" VerticalAlignment="Center" Margin="0,0,6,4" Checked="SetMapRotation" Unchecked="SetMapRotation"/>
     </WrapPanel>

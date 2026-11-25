@@ -7,7 +7,7 @@ internal static class PanoramaKeyStore
 {
     static string KeyPath(string provider)
     {
-        if (provider != "mapy" && provider != "google" && provider != "google3d") throw new ArgumentException(UiText.Get("Neznámý poskytovatel."));
+        if (provider != "mapy" && provider != "google" && provider != "google3d" && provider != "mapillary") throw new ArgumentException(UiText.Get("Neznámý poskytovatel."));
         return System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SuitoRide", provider + ".key");
     }
     public static bool Exists(string provider) => System.IO.File.Exists(KeyPath(provider));
@@ -46,7 +46,7 @@ internal static class PanoramaKeyStore
         if (System.IO.File.Exists(ProviderPath))
         {
             var provider=System.IO.File.ReadAllText(ProviderPath).Trim();
-            if (provider=="off" || ((provider=="mapy" || provider=="google") && Exists(provider))) return provider;
+            if (provider == "off" || ((provider is "mapy" or "google" or "mapillary") && Exists(provider))) return provider;
         }
         if (Exists("mapy")) return "mapy";
         if (Exists("google")) return "google";

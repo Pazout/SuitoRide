@@ -32,7 +32,7 @@ public partial class MainWindow : Window
     bool riding,demo,ticking;
     readonly Stopwatch rideClock=new();
     double rideStartDistance;
-    public MainWindow(){InitializeComponent();InitializeProfileLegend();Language=System.Windows.Markup.XmlLanguage.GetLanguage(CultureInfo.CurrentCulture.IetfLanguageTag);Title=$"Suito Ride {typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.1.0"}";timer.Tick+=Tick;Closing+=HandleClosing;Loaded+=(_,_)=>{InitializeHeartRate();InitializeSram();RestoreRiderName();InitMap();RestoreCatalog();RestoreLastRoute();RestorePanoramaSpacing();AutoStartPanorama();trainerRestoreTask=RestoreTrainerAsync();heartRateRestoreTask=RestoreHeartRateAsync();};Closed+=(_,_)=>{sharedRide?.Shutdown();trainerConnection?.Cancel();heartRateAttempt?.Cancel();DisconnectHeartRate();StopSramRead();StopSramGear();DisconnectCore();};}
+    public MainWindow(){InitializeComponent();InitializeProfileLegend();Language=System.Windows.Markup.XmlLanguage.GetLanguage(CultureInfo.CurrentCulture.IetfLanguageTag);Title=$"Suito Ride {typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.1.0"}";timer.Tick+=Tick;Closing+=HandleClosing;Loaded+=(_,_)=>{InitializeHeartRate();InitializeSram();RestoreRiderName();InitMap();RestoreCatalog();RestoreLastRoute();RestorePanoramaSpacing();AutoStartPanorama();trainerRestoreTask=RestoreTrainerAsync();heartRateRestoreTask=RestoreHeartRateAsync();};Closed+=(_,_)=>{ResetStreetPhoto();sharedRide?.Shutdown();trainerConnection?.Cancel();heartRateAttempt?.Cancel();DisconnectHeartRate();StopSramRead();StopSramGear();DisconnectCore();};}
     bool installingUpdate;
     async void CheckForUpdates(object sender,RoutedEventArgs e)
     {
@@ -148,6 +148,7 @@ public partial class MainWindow : Window
         route.Clear();
         route.AddRange(points);
         ResetReferenceRide();
+        if (IsStreetPhotoProvider(streetProvider)) { ResetStreetPhoto(); SendMap(new { type = "streetview-off" }); }
     }
     static double Dist(double a,double b,double c,double d){double r=Math.PI/180,x=(c-a)*r,y=(d-b)*r,h=Math.Pow(Math.Sin(x/2),2)+Math.Cos(a*r)*Math.Cos(c*r)*Math.Pow(Math.Sin(y/2),2);return 12742000*Math.Asin(Math.Sqrt(Math.Clamp(h,0,1)));}
     double Elev(double d){d=Math.Clamp(d,0,route[^1].D);int i=route.FindIndex(p=>p.D>=d);if(i<=0)return route[0].Ele;var a=route[i-1];var b=route[i];return a.Ele+(b.Ele-a.Ele)*(d-a.D)/(b.D-a.D);}
@@ -380,6 +381,7 @@ public partial class MainWindow : Window
         rideStartDistance=distance;
         rideClock.Restart();
         ResetProfileTelemetry();
+        streetRidePhotos=demo ? null : LoadRidePhotoCapture();
         session=demo?null:new RideSession(RouteName.Text, distance, CurrentRidePosition(), routeHasUnsavedEdits ? null : routeSourcePath);
         currentPower=null;
         currentCadence=null;
@@ -405,6 +407,7 @@ public partial class MainWindow : Window
             AddProfileTelemetry(distance, sampleSpeed, sampleHeartRate, sampleCadence, samplePower);
             session?.AddSample(distance, sampleSpeed, sampleCadence, samplePower, sampleHeartRate, CurrentRidePosition());
             double grade=SlopeAt(distance);UpdateView();
+            UpdateRidePhotoCapture();
             if(!demo&&(double.IsNaN(lastGrade)||Math.Abs(grade-lastGrade)>=0.5)){
                 short raw=(short)Math.Round(grade*100);await Command([0x11,0,0,(byte)(raw&255),(byte)((raw>>8)&255),40,51]);lastGrade=grade;
             }
@@ -460,7 +463,9 @@ public partial class MainWindow : Window
                 Microsoft.Web.WebView2.Core.CoreWebView2HostResourceAccessKind.DenyCors);
             MapView.CoreWebView2.Settings.AreDefaultContextMenusEnabled=false;
             MapView.CoreWebView2.WebMessageReceived+=(_,e)=>{
-                if(e.TryGetWebMessageAsString()=="ready"){mapReady=true;MapStatus.Text=UiText.Get("Mapa: OpenStreetMap. Poloha vychází z ujeté vzdálenosti.");SendRiderName();SendRoute();SendMap(new{type="rotate",enabled=RotateMap.IsChecked==true});SendMap(new{type="ride-layout",active=riding,fitMainMap=riding&&navigationMode});SendViewMode();foreach(var other in otherRiders.Values.ToArray())ShowOtherRider(other);UpdateStreetView(true);}
+                string message=e.TryGetWebMessageAsString();
+                if(message=="ready"){mapReady=true;MapStatus.Text=UiText.Get("Mapa: OpenStreetMap. Poloha vychází z ujeté vzdálenosti.");SendRiderName();SendRoute();SendMap(new{type="rotate",enabled=RotateMap.IsChecked==true});SendMap(new{type="ride-layout",active=riding,fitMainMap=riding&&navigationMode});SendViewMode();foreach(var other in otherRiders.Values.ToArray())ShowOtherRider(other);UpdateStreetView(true);}
+                else StreetPhotoStatus(message);
             };
             MapView.CoreWebView2.NavigationCompleted+=(_,e)=>{if(!e.IsSuccess)MapStatus.Text=UiText.Get("Mapu se nepodařilo načíst. Zkontrolujte připojení a WebView2 Runtime.");};
             MapView.CoreWebView2.NewWindowRequested+=(_,e)=>{e.Handled=true;try{System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(e.Uri){UseShellExecute=true});}catch{}};
@@ -499,6 +504,7 @@ public partial class MainWindow : Window
     }
     void ShowNavigation(object s,RoutedEventArgs e)
     {
+        if (IsStreetPhotoProvider(streetProvider)) ResetStreetPhoto();
         activeGoogle3DKey=null;
         navigationMode=true;
         SendViewMode();
@@ -522,6 +528,7 @@ public partial class MainWindow : Window
                 if(string.IsNullOrWhiteSpace(key))return;
             }
             if(activeGoogle3DKey==null)RotateMap.IsChecked=false;
+            if (IsStreetPhotoProvider(streetProvider)) ResetStreetPhoto();
             activeGoogle3DKey=key;
             navigationMode=true;
             SendViewMode();
@@ -749,18 +756,27 @@ public partial class MainWindow : Window
         }
     }
 
-    void SetActivePanorama(string provider,string key)
+    void SetActivePanorama(string provider,string? key)
     {
+        if (IsStreetPhotoProvider(streetProvider) || IsStreetPhotoProvider(provider))
+        {
+            ResetStreetPhoto();
+            SendMap(new { type = "streetview-off" });
+        }
         streetProvider=provider;
         streetKey=key;
         lastStreetDistance=double.NaN;
         SetPanoramaPicker(provider);
-        if(route.Count>=2)ShowPanoramaSpacing();
+        if (IsStreetPhotoProvider(provider))
+            StreetStatus.Text = UiText.Format($"Zapnutý zdroj fotek: {MapillaryName}. Pokrytí závisí na trase.");
+        else if(route.Count>=2)ShowPanoramaSpacing();
         else StreetStatus.Text=UiText.Get("Panorama zapnuto. Pro zobrazení načtěte GPX trasu.");
     }
 
     void TurnOffPanorama()
     {
+        if (IsStreetPhotoProvider(streetProvider)) ResetStreetPhoto();
+        streetProvider="off";
         streetKey=null;
         lastStreetDistance=double.NaN;
         SetPanoramaPicker("off");
@@ -775,9 +791,20 @@ public partial class MainWindow : Window
     }
     void UpdateStreetView(bool force=false)
     {
-        if(!mapReady||streetKey==null||route.Count<2||navigationMode||activeGoogle3DKey!=null)return;
+        if(!mapReady||(streetKey==null)||route.Count<2||navigationMode||activeGoogle3DKey!=null)return;
         double meters = DisplayDistance;
         if(!force&&(!riding||(!double.IsNaN(lastStreetDistance)&&Math.Abs(meters-lastStreetDistance)<panoramaSpacing)))return;
+        if (IsStreetPhotoProvider(streetProvider))
+        {
+            if (streetPhotoRequest != null)
+            {
+                if (force) refreshStreetPhotoAfterRequest = true;
+                return;
+            }
+            lastStreetDistance=meters;
+            UpdateStreetPhoto(meters);
+            return;
+        }
         var p=PositionAt(meters);
         SendMap(new{type="streetview",provider=streetProvider,key=streetKey,lat=p.Lat,lon=p.Lon,heading=HeadingAt(meters)});
         lastStreetDistance=meters;
@@ -880,7 +907,10 @@ public partial class MainWindow : Window
         if(session==null)return "";
         var record=session.Finish(distance, result, CurrentRidePosition());
         session=null;
+        var photos=streetRidePhotos;
+        streetRidePhotos=null;
         if(record.DistanceMeters<0.1)return "";
+        pendingStreetPhotos=photos;
         pendingRide=record;
         try { return " " + SaveRideToHistory(record); }
         catch(Exception) {
@@ -902,6 +932,10 @@ public partial class MainWindow : Window
         RefreshCompletedRideCounts();
 
         string status = UiText.Get("Jízda uložena do historie.");
+        var photos=pendingStreetPhotos;
+        pendingStreetPhotos=null;
+        if (photos?.HasRequests == true)
+            ridePhotoSaves = Task.WhenAll(ridePhotoSaves, SaveRidePhotosAsync(photos, ride.Id));
         try
         {
             if (dropboxArchive.Export(ride)) status += " " + UiText.Get("Kopie TCX uložena do složky Dropboxu.");
@@ -930,6 +964,12 @@ public partial class MainWindow : Window
             e.Cancel=true;
             Status.Text=UiText.Get("Jízdu se nepodařilo uložit. Zkontroluj přístup k datům a zkus uložení znovu.");
             MessageBox.Show(Status.Text,UiText.Get("Neuložená jízda"),MessageBoxButton.OK,MessageBoxImage.Warning);
+            return;
+        }
+        if (!ridePhotoSaves.IsCompleted)
+        {
+            e.Cancel = true;
+            if (!closingAfterPhotos) CloseAfterRidePhotos();
         }
     }
 

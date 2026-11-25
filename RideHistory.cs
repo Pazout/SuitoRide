@@ -61,6 +61,8 @@ internal sealed class RideHistoryStore
     readonly string folder;
     public RideHistoryStore(string? directory = null) => folder = directory ?? Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SuitoRide", "rides");
+    public string PhotoFolder(Guid rideId) => Path.Combine(folder, rideId.ToString("N") + "-photos");
+
     public void Save(RideRecord ride)
     {
         Directory.CreateDirectory(folder);

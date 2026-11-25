@@ -15,6 +15,7 @@ internal sealed class MapApiKeySettings : StackPanel
         [
             new("mapy", "Mapy.com", UiText.Get("Použij klíč pro Mapy.com REST API.")),
             new("google", "Google Street View", UiText.Get("Použij klíč pro Google Maps Embed API.")),
+            new("mapillary", "Mapillary", UiText.Get("Vlož Client Token ze svého účtu Mapillary Developers. Suito Ride může během jízdy ukládat fotky v každém pohledu.")),
             new("google3d", "Google 3D", UiText.Get("Vlož klíč pro Maps JavaScript API s povolenou fakturací. Google 3D se načte, až zvolíš jeho pohled. Pokud omezuješ klíč podle webu, povol https://suitoride-3d.local/*."))
         ];
         var selector = new ComboBox

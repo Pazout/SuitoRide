@@ -12,8 +12,11 @@
 #google3dwrap{display:none;width:50%;min-width:200px;height:100%}
 #layout.ride #google3dwrap{width:75%}
 #google3dwrap iframe{display:block;width:100%;height:100%;border:0}
+#streetPhotoImage{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:none}
+#streetPhotoCredit{position:absolute;bottom:0;right:0;max-width:100%;padding:5px 8px;background:#10212deb;color:white;font:13px sans-serif;text-align:right}
+#streetPhotoCredit a{color:white}
 </style>
-<script src="localization.js"></script></head><body><div id="layout"><div id="mapwrap"><div id="map"></div><div id="overview" title="Přehled celé trasy" data-l10n-title=""></div></div><div id="navwrap"><div id="navmap"></div><div id="naverror"></div></div><div id="google3dwrap"></div><div id="panowrap"><div id="panoerror" data-l10n>Panorama není dostupné. Zkontrolujte klíč, připojení nebo dostupnost snímků.</div></div></div><div id="notice" data-l10n>Načtěte GPX trasu.</div>
+<script src="localization.js"></script></head><body><div id="layout"><div id="mapwrap"><div id="map"></div><div id="overview" title="Přehled celé trasy" data-l10n-title=""></div></div><div id="navwrap"><div id="navmap"></div><div id="naverror"></div></div><div id="google3dwrap"></div><div id="panowrap"><img id="streetPhotoImage" alt=""><div id="streetPhotoCredit" hidden><a id="streetPhotoSource" target="_blank" rel="noopener"></a> · <a id="streetPhotoLicense" target="_blank" rel="noopener">CC BY-SA 4.0</a></div><div id="panoerror" data-l10n>Panorama není dostupné. Zkontrolujte klíč, připojení nebo dostupnost snímků.</div></div></div><div id="notice" data-l10n>Načtěte GPX trasu.</div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="leaflet-rotate.js"></script>
 <script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
@@ -204,6 +207,31 @@ else{
  function updateOverview(){document.getElementById('overview').style.display=follow&&line?'block':'none';if(follow&&line)requestAnimationFrame(()=>{overview.invalidateSize();overview.fitBounds(overviewLine.getBounds(),{padding:[6,6],maxZoom:15});});}
  const peers=new Map();
  const notice=document.getElementById('notice'),panowrap=document.getElementById('panowrap'),panoerror=document.getElementById('panoerror');
+ const streetPhotoImage=document.getElementById('streetPhotoImage'),streetPhotoCredit=document.getElementById('streetPhotoCredit');
+ const streetPhotoSource=document.getElementById('streetPhotoSource'),streetPhotoLicense=document.getElementById('streetPhotoLicense');
+ let streetPhotoGeneration=0, showingStreetPhoto=false;
+ function clearStreetPhoto(){
+  streetPhotoGeneration++;showingStreetPhoto=false;streetPhotoImage.style.display='none';
+  streetPhotoImage.removeAttribute('src');streetPhotoCredit.hidden=true;
+ }
+ function showStreetPhoto(m){
+  if(!showingStreetPhoto){clearImages();clearGooglePanos();showingStreetPhoto=true;panoramaVisible=true;refreshPanels();setTimeout(()=>map.invalidateSize(),50);}
+  const generation=++streetPhotoGeneration;
+  if(m.type!=='street-photo'){
+   streetPhotoImage.style.display='none';streetPhotoImage.removeAttribute('src');streetPhotoCredit.hidden=true;
+   panoerror.textContent=m.message;panoerror.style.display='block';
+   return;
+  }
+  const next=new Image();
+  next.onload=()=>{
+   if(generation!==streetPhotoGeneration)return;
+   streetPhotoImage.src=next.src;streetPhotoImage.alt=m.provider;streetPhotoImage.style.display='block';
+   streetPhotoSource.href=m.source;streetPhotoSource.textContent=m.credit;streetPhotoLicense.href=m.license;
+   streetPhotoCredit.hidden=false;panoerror.style.display='none';
+  };
+  next.onerror=()=>{if(generation===streetPhotoGeneration)window.chrome.webview.postMessage('street-photo-error:'+m.id);};
+  next.src=m.url;
+ }
  let imageGeneration=0, activeImage=null, lastMapyRequest=null;
  function clearImages(){imageGeneration++;panowrap.querySelectorAll('.panoimg').forEach(img=>img.remove());activeImage=null;lastMapyRequest=null;}
  function loadPanorama(url){
@@ -356,8 +384,9 @@ else{
   }else if(m.type==='peer-left'){const marker=peers.get(m.id);if(marker){map.removeLayer(marker);peers.delete(m.id);const navPeer=navPeers.get(m.id);if(navPeer){navPeer.remove();navPeers.delete(m.id);}}}
   else if(m.type==='peer-clear'){for(const marker of peers.values())map.removeLayer(marker);peers.clear();for(const marker of navPeers.values())marker.remove();navPeers.clear();}
   else if(m.type==='rotate'){rotate=m.enabled;applyHeading();}
-  else if(m.type==='navigation-mode'){closeGoogle3D();navMode=m.enabled;refreshPanels();if(navMode)initNavigation();updateNavPosition(false);}
+  else if(m.type==='navigation-mode'){if(m.enabled&&showingStreetPhoto){clearStreetPhoto();panoramaVisible=false;panoerror.style.display='none';}closeGoogle3D();navMode=m.enabled;refreshPanels();if(navMode)initNavigation();updateNavPosition(false);}
   else if(m.type==='google-3d-mode'){
+   if(showingStreetPhoto){clearStreetPhoto();panoramaVisible=false;panoerror.style.display='none';}
    if(!google3DFrame)pendingMainFit=true;
    navMode=false;openGoogle3D(m.key);refreshPanels();
   }
@@ -366,8 +395,11 @@ else{
    if(m.fitMainMap)pendingMainFit=true;
    requestAnimationFrame(resizeActiveMap);
   }
-  else if(m.type==='streetview'){
-   panoramaVisible=true;refreshPanels();panoerror.style.display='none';
+  else if(m.type==='street-photo'||m.type==='street-photo-loading'||m.type==='street-photo-unavailable'){
+   showStreetPhoto(m);
+  }else if(m.type==='streetview'){
+   clearStreetPhoto();panoramaVisible=true;refreshPanels();panoerror.style.display='none';
+   panoerror.textContent=t('Panorama není dostupné. Zkontrolujte klíč, připojení nebo dostupnost snímků.');
    if(m.provider==='mapy'){
     clearGooglePanos();
     const rect=panowrap.getBoundingClientRect(),scale=Math.min(1024/Math.max(1,rect.width),1024/Math.max(1,rect.height),1);
@@ -380,7 +412,7 @@ else{
     loadGooglePano('https://www.google.com/maps/embed/v1/streetview?'+params.toString());
    }
    setTimeout(()=>map.invalidateSize(),50);
-  }else if(m.type==='streetview-off'){clearGooglePanos();clearImages();panoramaVisible=false;refreshPanels();setTimeout(()=>map.invalidateSize(),50);}
+  }else if(m.type==='streetview-off'){clearStreetPhoto();clearGooglePanos();clearImages();panoramaVisible=false;refreshPanels();setTimeout(()=>map.invalidateSize(),50);}
  });
  window.chrome.webview.postMessage('ready');
 }
