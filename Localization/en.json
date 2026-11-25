@@ -403,5 +403,22 @@
   "Převod {0}": "Gear {0}",
   "Převod —": "Gear —",
   "Převod SRAM AXS vyžaduje nové spárování.": "The SRAM AXS gear sensor needs to be paired again.",
-  "Čekám na ověřenou změnu převodu SRAM AXS.": "Waiting for a verified SRAM AXS gear change."
+  "Čekám na ověřenou změnu převodu SRAM AXS.": "Waiting for a verified SRAM AXS gear change.",
+  "Referenční jízda": "Reference ride",
+  "Vyber jízdu ze stejné trasy a směru. S referencí jízda začíná od startu GPX.": "Choose a ride on the same route in the same direction. With a reference, the ride starts from the start of the GPX.",
+  "Použít vybranou jízdu": "Use selected ride",
+  "Načíst TCX": "Load TCX",
+  "Odebrat referenci": "Remove reference",
+  "V historii zatím není jízda s GPS záznamem.": "No ride with a GPS track is in history yet.",
+  "Soupeř: {0}": "Opponent: {0}",
+  "Historii se nepodařilo načíst.": "Could not load ride history.",
+  "Ověřuji referenční jízdu…": "Checking reference ride…",
+  "Referenční jízdu se nepodařilo načíst.": "Could not load the reference ride.",
+  "Nejprve načti GPX trasu pro porovnání.": "Load a GPX route first to compare rides.",
+  "{0} s napřed": "{0} s ahead",
+  "{0} s pozadu": "{0} s behind",
+  "Stejný čas": "Same time",
+  "Virtuální soupeř": "Virtual opponent",
+  "Referenční jízda potřebuje čas a GPS body od startu až do cíle.": "A reference ride needs timestamps and GPS points from start to finish.",
+  "Jízda neodpovídá načtené trase, směru nebo úseku GPX.": "The ride does not match the loaded route, direction, or GPX section."
 }

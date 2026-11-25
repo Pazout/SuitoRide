@@ -6,6 +6,7 @@ const statusLabel = document.getElementById('status');
 const scene = document.getElementById('scene');
 let apiKey, library, loading = false, failed = false;
 let map, marker, routeLine, riderName = '';
+let reference, referenceMarker;
 let points = [], target, displayed, frame;
 const tilt = 58;
 let cameraRange = 290;
@@ -87,6 +88,7 @@ async function ensureMap() {
         marker.append(document.getElementById('rider-icon').cloneNode(true));
         scene.append(map);
         map.append(marker);
+        updateReference();
         drawRoute();
         render(target);
         showStatus('');
@@ -95,6 +97,25 @@ async function ensureMap() {
     } finally {
         loading = false;
     }
+}
+
+function updateReference() {
+    if (!map || failed) return;
+    if (!reference) {
+        referenceMarker?.remove();
+        referenceMarker = undefined;
+        return;
+    }
+
+    const position = {lat: reference.lat, lng: reference.lon};
+    if (!referenceMarker) {
+        referenceMarker = new library.Marker3DElement({
+            position, altitudeMode: 'CLAMP_TO_GROUND', label: reference.name,
+            sizePreserved: true, drawsWhenOccluded: true
+        });
+        referenceMarker.append(document.getElementById('reference-icon').cloneNode(true));
+        map.append(referenceMarker);
+    } else referenceMarker.position = position;
 }
 
 function drawRoute() {
@@ -164,7 +185,11 @@ window.addEventListener('message', event => {
         if (Number.isFinite(message.range) && message.range > 0) cameraRange = message.range;
         riderName = message.riderName || '';
         points = message.points;
+        reference = message.reference;
         if (message.position) moveTo(message.position);
+    } else if (message.type === 'reference') {
+        reference = message.reference;
+        updateReference();
     } else if (message.type === 'rider-name') {
         riderName = message.name;
         if (marker) marker.setAttribute('aria-label', riderName || t('Jezdec'));

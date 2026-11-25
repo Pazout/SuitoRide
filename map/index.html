@@ -6,6 +6,8 @@
 <style>html,body{height:100%;margin:0;background:#1c2c38}#layout{height:100%;display:flex}#mapwrap{height:100%;flex:1;min-width:200px;position:relative}#map{height:100%;width:100%}#overview{display:none;position:absolute;right:8px;top:8px;width:140px;height:105px;z-index:1000;border:2px solid white;box-shadow:0 1px 5px #333;background:#ddd}#navwrap{display:none;width:50%;min-width:200px;height:100%;position:relative;background:#1c2c38}#layout.ride #navwrap{width:75%}#navmap{width:100%;height:100%}#naverror{display:none;position:absolute;z-index:2;top:10px;left:10px;right:10px;background:#fff;color:#333;padding:8px;font:14px sans-serif}#panowrap{display:none;width:50%;min-width:200px;height:100%;position:relative;background:#1c2c38}#layout.ride #panowrap{width:75%}.googlepano{position:absolute;inset:0;width:100%;height:100%;border:0;opacity:0;pointer-events:none;transition:opacity 1200ms ease-in-out}
 .googlepano.visible{opacity:1;pointer-events:auto}
 @media (prefers-reduced-motion:reduce){.googlepano{transition:none}}.panoimg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity 1200ms ease-in-out}.panoimg.visible{opacity:1}@media (prefers-reduced-motion:reduce){.panoimg{transition:none}}#panoerror{display:none;position:absolute;z-index:2;top:1em;left:1em;right:1em;color:white;font:14px sans-serif}#notice{position:absolute;z-index:1000;top:10px;left:55px;background:white;color:#333;padding:7px;border-radius:4px;font:13px sans-serif}.nav-rider,.nav-peer{width:16px;height:16px;border:3px solid white;border-radius:50%;box-shadow:0 1px 5px #333;background:#f5ba44}.nav-peer{background:#e25a75}.rider{background:#f5ba44;border:3px solid white;border-radius:50%;box-shadow:0 1px 5px #333}
+.reference-rider{width:21px;height:21px;display:grid;place-items:center}
+.reference-rider::before{content:"";width:12px;height:12px;border:2px solid white;border-radius:3px;background:#9248d1;box-shadow:0 1px 5px #333;transform:rotate(45deg)}
 .nav-rider[data-rider-name]::after{content:attr(data-rider-name);position:absolute;left:calc(100% + 6px);top:50%;transform:translateY(-50%);white-space:nowrap;background:white;color:#333;border-radius:4px;padding:3px 6px;font:12px sans-serif;box-shadow:0 1px 4px #333;pointer-events:none}
 #google3dwrap{display:none;width:50%;min-width:200px;height:100%}
 #layout.ride #google3dwrap{width:75%}
@@ -26,6 +28,7 @@ else{
  let overviewLine=null,overviewRider=null;
  let nav=null,navLoaded=false,navMode=false,panoramaVisible=false,navRoute=[],navPosition=null,navRider=null,navDisplay=null,navFrame=null;
  let riderName='',navRiderElement=null;
+ let referencePosition=null,referenceMarker=null,overviewReference=null,navReference=null;
  const google3DOrigin='https://suitoride-3d.local';
  const google3DRangeKey='suitoride.google3d.range';
  let google3DRange;
@@ -56,7 +59,7 @@ else{
   frame.referrerPolicy='strict-origin-when-cross-origin';
   frame.addEventListener('load',()=>{
    if(google3DFrame!==frame)return;
-   sendGoogle3D({type:'init',key,points:navRoute,position:latestGoogle3DPosition,riderName,range:google3DRange});
+   sendGoogle3D({type:'init',key,points:navRoute,position:latestGoogle3DPosition,riderName,range:google3DRange,reference:referencePosition});
   },{once:true});
   frame.src=google3DOrigin+'/google3d/index.html'+(globalThis.location?.search ?? '');
   google3DFrame=frame;
@@ -106,6 +109,7 @@ else{
     nav.addLayer({id:'ride-route-line',type:'line',source:'ride-route',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#007963','line-width':5}});
     updateNavRoute();updateNavPosition(false);
     for(const [id,peer] of peers)updateNavPeer(id,peer);
+    renderReference();
    });
    nav.on('error',e=>{if(!navLoaded){naverror.textContent=t('Navigační mapu se nepodařilo načíst. Zkontrolujte internetové připojení.');naverror.style.display='block';}});
   }catch(e){nav=null;naverror.textContent=t('Navigační pohled není dostupný: ')+e.message;naverror.style.display='block';}
@@ -168,6 +172,35 @@ else{
   const p=peer.getLatLng();marker.setLngLat([p.lng,p.lat]);
  }
  let line=null,rider=null,follow=true,rotate=false,heading=0;
+ function renderReference(){
+  const point=referencePosition;
+  if(!point){
+   referenceMarker?.remove();overviewReference?.remove();navReference?.remove();
+   referenceMarker=overviewReference=navReference=null;
+   return;
+  }
+  const latLng=[point.lat,point.lon];
+  if(!referenceMarker){
+   referenceMarker=L.marker(latLng,{icon:L.divIcon({className:'reference-rider',iconSize:[21,21],iconAnchor:[10,10]}),
+    title:point.name,zIndexOffset:-50}).addTo(map);
+   const label=document.createElement('span');label.textContent=point.name;
+   referenceMarker.bindTooltip(label,{permanent:true,direction:'left',offset:[-10,0]});
+   overviewReference=L.circleMarker(latLng,{radius:4,weight:1,color:'#fff',fillColor:'#9248d1',fillOpacity:1}).addTo(overview);
+  }else{
+   referenceMarker.setLatLng(latLng);overviewReference.setLatLng(latLng);
+  }
+  if(navLoaded){
+   if(!navReference){
+    const element=document.createElement('div');element.className='reference-rider';element.title=point.name;
+    navReference=new maplibregl.Marker({element}).setLngLat([point.lon,point.lat]).addTo(nav);
+   }else navReference.setLngLat([point.lon,point.lat]);
+  }
+ }
+ function setReference(point){
+  referencePosition=point;
+  renderReference();
+  sendGoogle3D({type:'reference',reference:point});
+ }
  function updateOverview(){document.getElementById('overview').style.display=follow&&line?'block':'none';if(follow&&line)requestAnimationFrame(()=>{overview.invalidateSize();overview.fitBounds(overviewLine.getBounds(),{padding:[6,6],maxZoom:15});});}
  const peers=new Map();
  const notice=document.getElementById('notice'),panowrap=document.getElementById('panowrap'),panoerror=document.getElementById('panoerror');
@@ -312,6 +345,8 @@ else{
    sendGoogle3D({type:'rider-name',name:riderName});
   }else if(m.type==='fit'&&line){fitMainMap();}
   else if(m.type==='follow'&&rider){pendingMainFit=false;follow=true;updateOverview();map.setView(rider.getLatLng(),Math.max(map.getZoom(),15));}
+  else if(m.type==='reference'){setReference(m);}
+  else if(m.type==='reference-clear'){setReference(null);}
   else if(m.type==='peer'){
    let marker=peers.get(m.id);
    if(!marker){marker=L.circleMarker([m.lat,m.lon],{radius:8,color:'#ffffff',weight:2,fillColor:'#e25a75',fillOpacity:1}).addTo(map);peers.set(m.id,marker);}

@@ -403,5 +403,22 @@
   "Převod {0}": "Gang {0}",
   "Převod —": "Gang —",
   "Převod SRAM AXS vyžaduje nové spárování.": "Die SRAM AXS-Ganganzeige muss erneut gekoppelt werden.",
-  "Čekám na ověřenou změnu převodu SRAM AXS.": "Warte auf einen bestätigten SRAM AXS-Gangwechsel."
+  "Čekám na ověřenou změnu převodu SRAM AXS.": "Warte auf einen bestätigten SRAM AXS-Gangwechsel.",
+  "Referenční jízda": "Referenzfahrt",
+  "Vyber jízdu ze stejné trasy a směru. S referencí jízda začíná od startu GPX.": "Wähle eine Fahrt auf derselben Strecke in derselben Richtung. Mit Referenz beginnt die Fahrt am Start der GPX-Strecke.",
+  "Použít vybranou jízdu": "Ausgewählte Fahrt verwenden",
+  "Načíst TCX": "TCX laden",
+  "Odebrat referenci": "Referenz entfernen",
+  "V historii zatím není jízda s GPS záznamem.": "Im Verlauf gibt es noch keine Fahrt mit GPS-Aufzeichnung.",
+  "Soupeř: {0}": "Gegner: {0}",
+  "Historii se nepodařilo načíst.": "Der Fahrtverlauf konnte nicht geladen werden.",
+  "Ověřuji referenční jízdu…": "Referenzfahrt wird geprüft…",
+  "Referenční jízdu se nepodařilo načíst.": "Die Referenzfahrt konnte nicht geladen werden.",
+  "Nejprve načti GPX trasu pro porovnání.": "Lade zuerst eine GPX-Strecke zum Vergleichen.",
+  "{0} s napřed": "{0} s voraus",
+  "{0} s pozadu": "{0} s zurück",
+  "Stejný čas": "Gleiche Zeit",
+  "Virtuální soupeř": "Virtueller Gegner",
+  "Referenční jízda potřebuje čas a GPS body od startu až do cíle.": "Eine Referenzfahrt benötigt Zeitstempel und GPS-Punkte vom Start bis zum Ziel.",
+  "Jízda neodpovídá načtené trase, směru nebo úseku GPX.": "Die Fahrt passt nicht zur geladenen Strecke, Richtung oder zum GPX-Abschnitt."
 }

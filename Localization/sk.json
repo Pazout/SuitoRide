@@ -403,5 +403,22 @@
   "Převod {0}": "Prevod {0}",
   "Převod —": "Prevod —",
   "Převod SRAM AXS vyžaduje nové spárování.": "Prevod SRAM AXS vyžaduje nové spárovanie.",
-  "Čekám na ověřenou změnu převodu SRAM AXS.": "Čakám na overenú zmenu prevodu SRAM AXS."
+  "Čekám na ověřenou změnu převodu SRAM AXS.": "Čakám na overenú zmenu prevodu SRAM AXS.",
+  "Referenční jízda": "Referenčná jazda",
+  "Vyber jízdu ze stejné trasy a směru. S referencí jízda začíná od startu GPX.": "Vyber jazdu na rovnakej trase a v rovnakom smere. S referenciou jazda začína od štartu GPX.",
+  "Použít vybranou jízdu": "Použiť vybranú jazdu",
+  "Načíst TCX": "Načítať TCX",
+  "Odebrat referenci": "Odstrániť referenciu",
+  "V historii zatím není jízda s GPS záznamem.": "V histórii zatiaľ nie je jazda s GPS záznamom.",
+  "Soupeř: {0}": "Súper: {0}",
+  "Historii se nepodařilo načíst.": "Históriu sa nepodarilo načítať.",
+  "Ověřuji referenční jízdu…": "Overujem referenčnú jazdu…",
+  "Referenční jízdu se nepodařilo načíst.": "Referenčnú jazdu sa nepodarilo načítať.",
+  "Nejprve načti GPX trasu pro porovnání.": "Najprv načítaj GPX trasu na porovnanie.",
+  "{0} s napřed": "{0} s vpredu",
+  "{0} s pozadu": "{0} s pozadu",
+  "Stejný čas": "Rovnaký čas",
+  "Virtuální soupeř": "Virtuálny súper",
+  "Referenční jízda potřebuje čas a GPS body od startu až do cíle.": "Referenčná jazda potrebuje čas a GPS body od štartu až do cieľa.",
+  "Jízda neodpovídá načtené trase, směru nebo úseku GPX.": "Jazda nezodpovedá načítanej trase, smeru alebo úseku GPX."
 }

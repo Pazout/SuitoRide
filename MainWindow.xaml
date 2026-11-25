@@ -20,6 +20,7 @@
           <local:ActionButton Content="{local:Ui 'Historie tréninků', Prompt=True}" Icon="{x:Static local:ButtonIcons.History}" Click="ShowHistory"/>
           <local:ActionButton Content="{local:Ui 'Nastavení', Prompt=True}" Icon="{x:Static local:ButtonIcons.Settings}" Click="ShowMapSettings"/>
           <local:ActionButton Content="{local:Ui 'Společná jízda', Prompt=True}" Icon="{x:Static local:ButtonIcons.Group}" Click="OpenSharedRide"/>
+          <local:ActionButton Content="{local:Ui 'Referenční jízda', Prompt=True}" Icon="{x:Static local:ButtonIcons.Follow}" Click="OpenReferenceRide"/>
           <local:ActionButton Content="{local:Ui 'Zkontrolovat aktualizace', Prompt=True}" Icon="{x:Static local:ButtonIcons.Update}" Click="CheckForUpdates"/>
           <local:ActionButton x:Name="RetrySaveButton" Content="{local:Ui 'Uložit čekající jízdu'}" Icon="{x:Static local:ButtonIcons.Save}" Click="RetrySaveRide" Visibility="Collapsed"/>
         </StackPanel>
@@ -141,7 +142,10 @@
             </StackPanel>
           </Viewbox>
         </UniformGrid>
-        <TextBlock x:Name="RideInfo" Text="{local:Ui 'Pro skutečnou jízdu připojte trenažér.'}" Foreground="#99b2bf" Margin="0,2,0,0" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+        <DockPanel Margin="0,2,0,0">
+          <TextBlock x:Name="ReferenceStatus" DockPanel.Dock="Right" MaxWidth="220" Margin="12,0,0,0" FontWeight="SemiBold" Visibility="Collapsed"/>
+          <TextBlock x:Name="RideInfo" Text="{local:Ui 'Pro skutečnou jízdu připojte trenažér.'}" Foreground="#99b2bf" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+        </DockPanel>
         <DockPanel>
           <TextBlock x:Name="SramBatteryStatus" DockPanel.Dock="Right" Margin="12,0,0,0" Foreground="#9ed4c7" Visibility="Collapsed"/>
           <TextBlock x:Name="Status" Text="{local:Ui 'Načtěte trasu a vyhledejte trenažér.'}" Foreground="#9ed4c7" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>

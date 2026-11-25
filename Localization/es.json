@@ -403,5 +403,22 @@
   "Převod {0}": "Marcha {0}",
   "Převod —": "Marcha —",
   "Převod SRAM AXS vyžaduje nové spárování.": "Hay que volver a vincular el sensor de marcha SRAM AXS.",
-  "Čekám na ověřenou změnu převodu SRAM AXS.": "Esperando un cambio de marcha SRAM AXS verificado."
+  "Čekám na ověřenou změnu převodu SRAM AXS.": "Esperando un cambio de marcha SRAM AXS verificado.",
+  "Referenční jízda": "Ruta de referencia",
+  "Vyber jízdu ze stejné trasy a směru. S referencí jízda začíná od startu GPX.": "Elige una actividad del mismo recorrido y sentido. Con una referencia, la ruta comienza en el inicio del GPX.",
+  "Použít vybranou jízdu": "Usar la actividad seleccionada",
+  "Načíst TCX": "Cargar TCX",
+  "Odebrat referenci": "Quitar referencia",
+  "V historii zatím není jízda s GPS záznamem.": "Todavía no hay actividades con registro GPS en el historial.",
+  "Soupeř: {0}": "Rival: {0}",
+  "Historii se nepodařilo načíst.": "No se pudo cargar el historial.",
+  "Ověřuji referenční jízdu…": "Comprobando la ruta de referencia…",
+  "Referenční jízdu se nepodařilo načíst.": "No se pudo cargar la ruta de referencia.",
+  "Nejprve načti GPX trasu pro porovnání.": "Carga primero una ruta GPX para comparar actividades.",
+  "{0} s napřed": "{0} s por delante",
+  "{0} s pozadu": "{0} s por detrás",
+  "Stejný čas": "Mismo tiempo",
+  "Virtuální soupeř": "Rival virtual",
+  "Referenční jízda potřebuje čas a GPS body od startu až do cíle.": "La ruta de referencia necesita tiempos y puntos GPS del inicio a la meta.",
+  "Jízda neodpovídá načtené trase, směru nebo úseku GPX.": "La actividad no coincide con el recorrido, el sentido o el tramo GPX cargado."
 }

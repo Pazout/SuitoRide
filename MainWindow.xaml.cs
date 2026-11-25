@@ -146,6 +146,8 @@ public partial class MainWindow : Window
         ResetProfileTelemetry();
         route.Clear();
         route.AddRange(points);
+        referenceRide = null;
+        RefreshReferenceRide();
     }
     static double Dist(double a,double b,double c,double d){double r=Math.PI/180,x=(c-a)*r,y=(d-b)*r,h=Math.Pow(Math.Sin(x/2),2)+Math.Cos(a*r)*Math.Cos(c*r)*Math.Pow(Math.Sin(y/2),2);return 12742000*Math.Asin(Math.Sqrt(Math.Clamp(h,0,1)));}
     double Elev(double d){d=Math.Clamp(d,0,route[^1].D);int i=route.FindIndex(p=>p.D>=d);if(i<=0)return route[0].Ele;var a=route[i-1];var b=route[i];return a.Ele+(b.Ele-a.Ele)*(d-a.D)/(b.D-a.D);}
@@ -371,7 +373,7 @@ public partial class MainWindow : Window
     void BeginRide()
     {
         ClearProfilePreview();
-        if(distance>=route[^1].D)distance=0;
+        if(referenceRide != null || distance>=route[^1].D)distance=0;
         lastStreetDistance=double.NaN;
         lastGrade=double.NaN;
         lastTick=DateTime.UtcNow;
@@ -482,6 +484,7 @@ public partial class MainWindow : Window
     void SendPosition()
     {
         SendDisplayedPosition();
+        RefreshReferenceRide();
         sharedRide?.Publish(distance,riding);
         UpdateStreetView();
     }
@@ -798,7 +801,11 @@ public partial class MainWindow : Window
 
     void SetRideMode(bool active)
     {
-        if(!active)rideClock.Stop();
+        if(!active)
+        {
+            rideClock.Stop();
+            RefreshReferenceRide();
+        }
         SetFullscreen(active);
         SetupPanel.Visibility=active?Visibility.Collapsed:Visibility.Visible;
         TrainerButton.Visibility=HeartRateButton.Visibility=SramButton.Visibility=SetupPanel.Visibility;

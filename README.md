@@ -17,6 +17,10 @@ Základní mapa a navigační pohled MapLibre fungují bez klíče. Navigace se 
 
 Na výškovém profilu lze vybrat nový začátek a cíl, obrátit směr a uložit vybraný úsek jako nový GPX. Aplikace ukazuje celkové stoupání i klesání a náhled na příštích 50 metrů. Kliknutím na náhled můžeš postupně přepnout dosah na 100, 150, 250 a 500 m. Velký graf při jízdě ukazuje rychlost, tep, kadenci a výkon. Ujetá vzdálenost vychází z rychlosti hlášené trenažérem. Přesnost sklonu závisí na výškových údajích GPX.
 
+## Referenční jízda
+
+Nejprve načti GPX. Tlačítkem **Referenční jízda…** vyber z historie jízdu s GPS záznamem nebo načti TCX s časovými značkami a GPS body. Záznam musí pokrývat stejnou trasu či úsek ve stejném směru. Jízda s referencí začíná od startu GPX. Během jízdy údaj **s napřed** nebo **s pozadu** porovnává časy na stejném místě a fialová značka ukazuje, kde by soupeř byl ve stejném čase. Pauzy z referenčního záznamu se započítávají.
+
 ## Hrudní pás a elektronické řazení
 
 Přes **Hrudní pás** připojíš snímač s Bluetooth LE Heart Rate Service. Aktuální tep je vidět v přehledu jízdy. Naměřené hodnoty se ukládají do historie skutečné jízdy a do exportu TCX, který aplikace používá i při odesílání na Stravu a přes FitnessSyncer. Poslední úspěšně připojený pás si aplikace zapamatuje. Při příštím spuštění aplikace se pokusí pás vyhledat a připojit. Automatické vyhledávání pásu i trenažéru běží nejvýš pět minut. Ruční vyhledání nebo připojení zruší automatický pokus pro dané zařízení jen v aktuálním spuštění aplikace.
