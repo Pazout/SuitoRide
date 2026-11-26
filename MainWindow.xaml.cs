@@ -28,11 +28,12 @@ public partial class MainWindow : Window
     TaskCompletionSource<byte[]>? reply;
     readonly SemaphoreSlim gate=new(1,1);
     double distance,speed,lastGrade=double.NaN;
+    double demoSpeedKmh=20;
     DateTime lastData=DateTime.MinValue,lastTick;
     bool riding,demo,ticking;
     readonly Stopwatch rideClock=new();
     double rideStartDistance;
-    public MainWindow(){InitializeComponent();InitializeProfileLegend();Language=System.Windows.Markup.XmlLanguage.GetLanguage(CultureInfo.CurrentCulture.IetfLanguageTag);Title=$"Suito Ride {typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.1.0"}";timer.Tick+=Tick;Closing+=HandleClosing;Loaded+=(_,_)=>{InitializeHeartRate();InitializeSram();RestoreRiderName();InitMap();RestoreCatalog();RestoreLastRoute();RestorePanoramaSpacing();AutoStartPanorama();trainerRestoreTask=RestoreTrainerAsync();heartRateRestoreTask=RestoreHeartRateAsync();};Closed+=(_,_)=>{ResetStreetPhoto();sharedRide?.Shutdown();trainerConnection?.Cancel();heartRateAttempt?.Cancel();DisconnectHeartRate();StopSramRead();StopSramGear();DisconnectCore();};}
+    public MainWindow(){InitializeComponent();InitializeProfileLegend();Language=System.Windows.Markup.XmlLanguage.GetLanguage(CultureInfo.CurrentCulture.IetfLanguageTag);Title=$"Suito Ride {typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.1.0"}";timer.Tick+=Tick;Closing+=HandleClosing;Loaded+=(_,_)=>{PlaceOnSecondaryMonitor();InitializeHeartRate();InitializeSram();RestoreRiderName();InitMap();RestoreCatalog();RestoreLastRoute();RestorePanoramaSpacing();AutoStartPanorama();trainerRestoreTask=RestoreTrainerAsync();heartRateRestoreTask=RestoreHeartRateAsync();};Closed+=(_,_)=>{ResetStreetPhoto();sharedRide?.Shutdown();trainerConnection?.Cancel();heartRateAttempt?.Cancel();DisconnectHeartRate();StopSramRead();StopSramGear();DisconnectCore();};}
     bool installingUpdate;
     async void CheckForUpdates(object sender,RoutedEventArgs e)
     {
@@ -83,12 +84,8 @@ public partial class MainWindow : Window
             }
 
             Status.Text=UiText.Get("Stahuji a ověřuji aktualizaci…");
-            string executable=await AppUpdates.InstallAsync(update,token);
+            await AppUpdates.InstallAsync(update,token);
             if(!IsLoaded)return;
-            var process=Process.Start(new ProcessStartInfo(executable)
-                {WorkingDirectory=System.IO.Path.GetDirectoryName(executable)!,UseShellExecute=true});
-            if(process==null)throw new InvalidOperationException(UiText.Get("Novou verzi se nepodařilo spustit."));
-            process.Dispose();
             installingUpdate=false;
             Close();
         }
@@ -361,7 +358,7 @@ public partial class MainWindow : Window
             if((f&1)==0){v=BitConverter.ToUInt16(b,i)/100.0;i+=2;}if((f&2)!=0)i+=2;
             if((f&4)!=0){c=BitConverter.ToUInt16(b,i)/2.0;i+=2;}if((f&8)!=0)i+=2;if((f&16)!=0)i+=3;if((f&32)!=0)i+=2;
             if((f&64)!=0)p=BitConverter.ToInt16(b,i);
-            Dispatcher.BeginInvoke(()=>{if(v.HasValue){speed=v.Value;lastData=DateTime.UtcNow;Speed.Text=$"{speed:F1} km/h";}if(c.HasValue){Cadence.Text=UiText.Format($"{c:F0} ot/min");currentCadence=c.Value;cadenceReceived=DateTime.UtcNow;}if(p.HasValue){Power.Text=$"{p:F0} W";currentPower=p.Value;powerReceived=DateTime.UtcNow;}});
+            Dispatcher.BeginInvoke(()=>{if(v.HasValue&&(!riding||!demo)){speed=v.Value;lastData=DateTime.UtcNow;Speed.Text=$"{speed:F1} km/h";}if(c.HasValue){Cadence.Text=UiText.Format($"{c:F0} ot/min");currentCadence=c.Value;cadenceReceived=DateTime.UtcNow;}if(p.HasValue){Power.Text=$"{p:F0} W";currentPower=p.Value;powerReceived=DateTime.UtcNow;}});
         }catch(ArgumentException){}
     }
     async void StartRide(object s,RoutedEventArgs e){
@@ -373,8 +370,9 @@ public partial class MainWindow : Window
     async void StartDemo(object s,RoutedEventArgs e){if(trainerConnection!=null&&!trainerConnectingAutomatically){Status.Text=UiText.Get("Trenažér se ještě připojuje.");return;}if(route.Count<2){Status.Text=UiText.Get("Nejprve načtěte GPX.");return;}if(riding||ticking||countdown!=null||starting)return;starting=true;try{if(!await PrepareCountdown(3))return;demo=true;BeginRide();}finally{starting=false;}}
     void BeginRide()
     {
+        distance=demo ? DisplayDistance : 0;
         ClearProfilePreview();
-        if(referenceRide != null || distance>=route[^1].D)distance=0;
+        speed=demo ? demoSpeedKmh : 0;
         lastStreetDistance=double.NaN;
         lastGrade=double.NaN;
         lastTick=DateTime.UtcNow;
@@ -382,6 +380,7 @@ public partial class MainWindow : Window
         rideClock.Restart();
         ResetProfileTelemetry();
         streetRidePhotos=demo ? null : LoadRidePhotoCapture();
+        rideSnapshot=null;
         session=demo?null:new RideSession(RouteName.Text, distance, CurrentRidePosition(), routeHasUnsavedEdits ? null : routeSourcePath);
         currentPower=null;
         currentCadence=null;
@@ -397,7 +396,7 @@ public partial class MainWindow : Window
     async void Tick(object? s,EventArgs e){
         if(!riding||ticking)return;ticking=true;try{
             var now=DateTime.UtcNow;double dt=Math.Clamp((now-lastTick).TotalSeconds,0,2);lastTick=now;
-            if(demo)speed=20;else if((now-lastData).TotalSeconds>5)speed=0;
+            if(demo)speed=demoSpeedKmh;else if((now-lastData).TotalSeconds>5)speed=0;
             if(session!=null && currentPower.HasValue && (now-powerReceived).TotalSeconds<=5)session.AddPower(currentPower.Value,dt);
             distance=Math.Min(route[^1].D,distance+speed/3.6*dt);
             double? sampleSpeed = demo || (now-lastData).TotalSeconds<=5 ? speed : null;
@@ -408,12 +407,30 @@ public partial class MainWindow : Window
             session?.AddSample(distance, sampleSpeed, sampleCadence, samplePower, sampleHeartRate, CurrentRidePosition());
             double grade=SlopeAt(distance);UpdateView();
             UpdateRidePhotoCapture();
+            UpdateRideSnapshot();
             if(!demo&&(double.IsNaN(lastGrade)||Math.Abs(grade-lastGrade)>=0.5)){
                 short raw=(short)Math.Round(grade*100);await Command([0x11,0,0,(byte)(raw&255),(byte)((raw>>8)&255),40,51]);lastGrade=grade;
             }
-            if(riding && distance>=route[^1].D){riding=false;timer.Stop();SetRideMode(false);string saved=EndRide("Dokončeno");if(!demo)await Command([8,1]);Status.Text=UiText.Get("Trasa dokončena.")+saved;}
+            if(riding && distance>=route[^1].D){riding=false;timer.Stop();SetRideMode(false);PlaySound(rideFinish);string saved=EndRide("Dokončeno");if(!demo)await Command([8,1]);Status.Text=UiText.Get("Trasa dokončena.")+saved;}
         }catch(Exception ex){riding=false;timer.Stop();SetRideMode(false);Status.Text=UiText.Get("Jízda zastavena: ")+ex.Message+EndRide("Přerušeno");}finally{ticking=false;}
     }
+    void ChangeDemoSpeed(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (!riding || !demo) return;
+        var change = e.ChangedButton switch
+        {
+            System.Windows.Input.MouseButton.Left => 5,
+            System.Windows.Input.MouseButton.Right => -5,
+            _ => 0
+        };
+        if (change == 0) return;
+        demoSpeedKmh = Math.Max(0, demoSpeedKmh + change);
+        speed = demoSpeedKmh;
+        Speed.Text = $"{speed:F1} km/h";
+        UpdateRideMetrics();
+        e.Handled = true;
+    }
+
     void UpdateView()
     {
         if(route.Count<2)return;
@@ -836,6 +853,9 @@ public partial class MainWindow : Window
         SetFullscreen(active);
         SetupPanel.Visibility=active?Visibility.Collapsed:Visibility.Visible;
         TrainerButton.Visibility=HeartRateButton.Visibility=SramButton.Visibility=SetupPanel.Visibility;
+        bool adjustDemoSpeed = active && demo;
+        Speed.Cursor = adjustDemoSpeed ? System.Windows.Input.Cursors.Hand : null;
+        Speed.ToolTip = adjustDemoSpeed ? UiText.Get("Levé kliknutí přidá 5 km/h, pravé ubere 5 km/h.") : null;
         bool fitMainMap=active && navigationMode;
         if(fitMainMap)RotateMap.IsChecked=false;
         SendMap(new{type="ride-layout",active,fitMainMap});
@@ -849,6 +869,37 @@ public partial class MainWindow : Window
     [DllImport("user32.dll")] static extern IntPtr MonitorFromWindow(IntPtr hwnd,uint flags);
     [DllImport("user32.dll",CharSet=CharSet.Auto)] static extern bool GetMonitorInfo(IntPtr monitor,ref MonitorInfo info);
     [DllImport("user32.dll",SetLastError=true)] static extern bool SetWindowPos(IntPtr hwnd,IntPtr insertAfter,int x,int y,int width,int height,uint flags);
+    delegate bool MonitorCallback(IntPtr monitor, IntPtr dc, IntPtr bounds, IntPtr data);
+    [DllImport("user32.dll")] static extern bool EnumDisplayMonitors(IntPtr dc, IntPtr clip, MonitorCallback callback, IntPtr data);
+
+    void PlaceOnSecondaryMonitor()
+    {
+        var handle = new WindowInteropHelper(this).Handle;
+        var primary = MonitorFromWindow(IntPtr.Zero, 1);
+        if (handle == IntPtr.Zero) return;
+        NativeRect? secondary = null;
+        bool fullHd = false;
+        EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, (monitor, _, _, _) =>
+        {
+            var info = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
+            if (monitor == primary || !GetMonitorInfo(monitor, ref info) || (info.Flags & 1) != 0)
+                return true;
+            var bounds = info.Monitor;
+            bool isFullHd = bounds.Right - bounds.Left == 1920 && bounds.Bottom - bounds.Top == 1080;
+            if (secondary == null || !fullHd && isFullHd)
+            {
+                secondary = info.Work;
+                fullHd = isFullHd;
+            }
+            return true;
+        }, IntPtr.Zero);
+        if (secondary is not { } work) return;
+
+        WindowState = WindowState.Normal;
+        SetWindowPos(handle, IntPtr.Zero, work.Left, work.Top, work.Right - work.Left, work.Bottom - work.Top, 0x0004 | 0x0010);
+        WindowState = WindowState.Maximized;
+    }
+
     static void PlaceOnOwnerMonitor(Window target,Window owner)
     {
         var info=new MonitorInfo{Size=Marshal.SizeOf<MonitorInfo>()};
@@ -908,9 +959,12 @@ public partial class MainWindow : Window
         var record=session.Finish(distance, result, CurrentRidePosition());
         session=null;
         var photos=streetRidePhotos;
+        var snapshot=rideSnapshot;
         streetRidePhotos=null;
+        rideSnapshot=null;
         if(record.DistanceMeters<0.1)return "";
         pendingStreetPhotos=photos;
+        pendingRideSnapshot=snapshot;
         pendingRide=record;
         try { return " " + SaveRideToHistory(record); }
         catch(Exception) {
@@ -936,6 +990,10 @@ public partial class MainWindow : Window
         pendingStreetPhotos=null;
         if (photos?.HasRequests == true)
             ridePhotoSaves = Task.WhenAll(ridePhotoSaves, SaveRidePhotosAsync(photos, ride.Id));
+        var snapshot=pendingRideSnapshot;
+        pendingRideSnapshot=null;
+        if (snapshot != null)
+            ridePhotoSaves = Task.WhenAll(ridePhotoSaves, SaveRideSnapshotAsync(snapshot, ride.Id));
         try
         {
             if (dropboxArchive.Export(ride)) status += " " + UiText.Get("Kopie TCX uložena do složky Dropboxu.");
@@ -1172,19 +1230,23 @@ public partial class MainWindow : Window
         Status.Text=UiText.Get("Pro změnu trasy se nejprve odpoj ze společné jízdy.");
         return true;
     }
-    static readonly Lazy<System.Media.SoundPlayer> countdownTick = new(() => LoadCountdownSound("CountdownTick"));
-    static readonly Lazy<System.Media.SoundPlayer> countdownStart = new(() => LoadCountdownSound("CountdownStart"));
+    static readonly Lazy<System.Media.SoundPlayer> countdownTick = new(() => LoadSound("CountdownTick"));
+    static readonly Lazy<System.Media.SoundPlayer> countdownStart = new(() => LoadSound("CountdownStart"));
 
-    static System.Media.SoundPlayer LoadCountdownSound(string name)
+    static readonly Lazy<System.Media.SoundPlayer> rideFinish = new(() => LoadSound("RideFinish"));
+
+    static System.Media.SoundPlayer LoadSound(string name)
     {
         var stream = typeof(MainWindow).Assembly.GetManifestResourceStream($"SuitoRide.Assets.{name}.wav")
             ?? throw new InvalidOperationException();
         return new System.Media.SoundPlayer(stream);
     }
 
-    static void PlayCountdownSound(bool start)
+    static void PlayCountdownSound(bool start) => PlaySound(start ? countdownStart : countdownTick);
+
+    static void PlaySound(Lazy<System.Media.SoundPlayer> sound)
     {
-        try { (start ? countdownStart : countdownTick).Value.Play(); }
-        catch(Exception) { /* Odpočet funguje i bez dostupného zvukového zařízení. */ }
+        try { sound.Value.Play(); }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or TimeoutException or IOException) { }
     }
 }

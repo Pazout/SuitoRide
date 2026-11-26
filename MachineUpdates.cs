@@ -66,6 +66,12 @@ internal static class MachineUpdates
             }
             """;
 
+        await StartCoordinatorAsync(coordinator, UiText.Get("Instalaci pro všechny uživatele se nepodařilo spustit."));
+    }
+
+    internal static async Task StartCoordinatorAsync(string coordinator, string failureMessage)
+    {
+        string powerShell = Path.Combine(Environment.SystemDirectory, "WindowsPowerShell", "v1.0", "powershell.exe");
         var start = new ProcessStartInfo(powerShell)
         {
             WorkingDirectory = Environment.SystemDirectory,
@@ -78,14 +84,14 @@ internal static class MachineUpdates
             start.ArgumentList.Add(argument);
 
         using var process = Process.Start(start)
-            ?? throw new InvalidOperationException(UiText.Get("Instalaci pro všechny uživatele se nepodařilo spustit."));
+            ?? throw new InvalidOperationException(failureMessage);
         await process.StandardInput.WriteAsync(Encode(coordinator));
         process.StandardInput.Close();
-        // Closing the application is safe only after the administrator approved the update.
+        // The helper confirms it can finish the update after this process exits.
         if (await process.StandardOutput.ReadLineAsync() != "ready")
-            throw new InvalidOperationException(UiText.Get("Instalaci pro všechny uživatele se nepodařilo spustit."));
+            throw new InvalidOperationException(failureMessage);
     }
 
     static string Encode(string script) => Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
-    static string Quote(string text) => "'" + text.Replace("'", "''") + "'";
+    internal static string Quote(string text) => "'" + text.Replace("'", "''") + "'";
 }

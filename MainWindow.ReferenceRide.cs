@@ -100,7 +100,7 @@ public partial class MainWindow
             return;
         }
 
-        double elapsed = rideClock.Elapsed.TotalSeconds;
+        double elapsed = rideClock.Elapsed.TotalSeconds + referenceRide.TimeAt(rideStartDistance);
         long seconds = (long)Math.Round(referenceRide.TimeAt(distance) - elapsed, MidpointRounding.AwayFromZero);
         ReferenceStatus.Text = seconds switch
         {

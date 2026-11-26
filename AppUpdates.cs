@@ -24,7 +24,8 @@ internal static class AppUpdates
         public Uri? ApiDownload { get; init; }
     }
     internal sealed class GitHubAccessException : Exception { }
-    static string TokenPath => Path.Combine(Path.GetDirectoryName(InstallFolder)!, "github-updates.dat");
+    static string TokenPath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SuitoRide", "github-updates.dat");
 
     public static string? LoadToken()
     {
@@ -41,8 +42,7 @@ internal static class AppUpdates
         try { File.WriteAllBytes(TokenPath, ProtectedData.Protect(plain, null, DataProtectionScope.CurrentUser)); }
         finally { CryptographicOperations.ZeroMemory(plain); }
     }
-    public static string InstallFolder => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SuitoRide", "installed");
+    public static string InstallFolder => Path.GetDirectoryName(Environment.ProcessPath)!;
 
     public static async Task<Update?> FindAsync(Version currentVersion, string? token = null)
     {
@@ -91,11 +91,18 @@ internal static class AppUpdates
         throw new InvalidOperationException(UiText.Format($"Verze {version} je na GitHubu, ale chybí ověřitelný ZIP pro Windows x64."));
     }
 
-    public static async Task<string> InstallAsync(Update update, string? token = null)
+    public static async Task InstallAsync(Update update, string? token = null)
     {
-        Directory.CreateDirectory(InstallFolder);
-        string workspace = Path.Combine(InstallFolder, ".staging-" + Guid.NewGuid().ToString("N"));
+        if (!string.Equals(Path.GetFileName(Environment.ProcessPath), "SuitoRide.exe", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException(UiText.Get("Pro tento počítač je potřeba ruční aktualizace z GitHubu."));
+
+        string folder = InstallFolder;
+        if ((File.GetAttributes(folder) & FileAttributes.ReparsePoint) != 0)
+            throw new InvalidOperationException(UiText.Get("Pro tento počítač je potřeba ruční aktualizace z GitHubu."));
+
+        string workspace = Path.Combine(folder, ".suitoride-update-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(workspace);
+        bool handedOff = false;
         try
         {
             string archivePath = Path.Combine(workspace, "update.zip");
@@ -103,19 +110,29 @@ internal static class AppUpdates
             string extracted = Path.Combine(workspace, "files");
             await Task.Run(() => Extract(update, archivePath, extracted));
 
-            string destination = Path.Combine(InstallFolder, $"v{update.Version}");
-            if (Directory.Exists(destination))
-            {
-                // Keep a manually edited or previously started installation untouched.
-                destination += "-" + Guid.NewGuid().ToString("N")[..8];
-            }
-            Directory.Move(extracted, destination);
-            return Path.Combine(destination, "SuitoRide.exe");
+            using var script = typeof(AppUpdates).Assembly.GetManifestResourceStream("SuitoRide.Assets.PersonalUpdate.ps1")
+                ?? throw new InvalidOperationException();
+            using var reader = new StreamReader(script);
+            string worker = await reader.ReadToEndAsync();
+            string message = UiText.Get("Aktualizaci ve stávající složce se nepodařilo dokončit.");
+            string coordinator = $"""
+                $target = {MachineUpdates.Quote(folder)}
+                $workspace = {MachineUpdates.Quote(workspace)}
+                $parentId = {Environment.ProcessId}
+                $version = '{update.Version.ToString(3)}'
+                $failureMessage = {MachineUpdates.Quote(message)}
+                {worker}
+                """;
+            await MachineUpdates.StartCoordinatorAsync(coordinator, message);
+            handedOff = true;
         }
         finally
         {
-            try { Directory.Delete(workspace, recursive: true); }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            if (!handedOff)
+            {
+                try { Directory.Delete(workspace, recursive: true); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            }
         }
     }
 

@@ -6,7 +6,7 @@ Suito Ride je aplikace pro Windows pro jízdu po GPX trase na chytrém cyklotren
 
 ## Stažení a první jízda
 
-1. Na stránce [Releases](https://github.com/Pazout/SuitoRide/releases/latest) stáhni ZIP pro Windows x64, rozbal celý obsah do jedné složky a spusť SuitoRide.exe. ZIP obsahuje potřebný .NET runtime. Pro mapy je potřeba Microsoft Edge WebView2 Runtime a připojení k internetu.
+1. Na stránce [Releases](https://github.com/Pazout/SuitoRide/releases/latest) stáhni ZIP pro Windows x64, rozbal celý obsah do jedné složky a spusť SuitoRide.exe. ZIP obsahuje potřebný .NET runtime. Pro mapy je potřeba Microsoft Edge WebView2 Runtime a připojení k internetu. S připojeným vedlejším monitorem se aplikace otevře maximalizovaná na něm.
 2. Načti GPX s nadmořskou výškou u každého bodu a jedním souvislým úsekem. Pro vyzkoušení je v repozitáři ukazka.gpx. Katalog zobrazuje trasy z vybrané složky a počty jejich dokončení. GPX se načte hned po výběru v katalogu. Poslední použitý GPX se při spuštění obnoví, pokud je soubor stále dostupný.
 3. Ukázkovou jízdu můžeš spustit bez trenažéru. Pro skutečnou jízdu zapni Bluetooth a v dialogu **Trenažér** vyhledej a připoj vybrané zařízení. Aplikace si zapamatuje poslední úspěšně připojený trenažér a při příštím spuštění ho zkusí vyhledat a připojit.
 4. Ukázková jízda začíná odpočtem 3–2–1, skutečná má deset sekund. Odpočet lze zrušit klávesou Escape nebo tlačítkem v okně.
@@ -23,7 +23,7 @@ Nejprve načti GPX. Tlačítkem **Referenční jízda…** vyber z historie jíz
 
 ## Hrudní pás a elektronické řazení
 
-Přes **Hrudní pás** připojíš snímač s Bluetooth LE Heart Rate Service. Aktuální tep je vidět v přehledu jízdy. Naměřené hodnoty se ukládají do historie skutečné jízdy a do exportu TCX, který aplikace používá i při odesílání na Stravu a přes FitnessSyncer. Poslední úspěšně připojený pás si aplikace zapamatuje. Při příštím spuštění aplikace se pokusí pás vyhledat a připojit. Automatické vyhledávání pásu i trenažéru běží nejvýš pět minut. Ruční vyhledání nebo připojení zruší automatický pokus pro dané zařízení jen v aktuálním spuštění aplikace.
+Přes **Hrudní pás** připojíš snímač s Bluetooth LE Heart Rate Service. Aktuální tep je vidět v přehledu jízdy. Naměřené hodnoty se ukládají do historie skutečné jízdy a do exportu TCX, který aplikace používá i při odesílání na Stravu. Poslední úspěšně připojený pás si aplikace zapamatuje. Při příštím spuštění aplikace se pokusí pás vyhledat a připojit. Automatické vyhledávání pásu i trenažéru běží nejvýš pět minut. Ruční vyhledání nebo připojení zruší automatický pokus pro dané zařízení jen v aktuálním spuštění aplikace.
 
 V dialogu **SRAM AXS…** vyber přehazovačku a probuď ji krátkým stiskem AXS. Po připojení uvidíš baterii a na ověřeném modelu Force AXS také živý zadní převod. Číslo zůstává viditelné během jízdy. Výběr zařízení se obnoví při příštím spuštění. Pokud použiješ samostatné párování převodu, Windows uloží klíč chráněný pod tvým účtem.
 
@@ -33,9 +33,9 @@ Tlačítko **Dropbox** u katalogu tras umožňuje vybrat místní složku s GPX 
 
 ## Historie a sdílení
 
-Skutečné jízdy se ukládají do historie. Vybranou jízdu lze exportovat jako TCX nebo ručně odeslat na Stravu, do FitnessSynceru nebo na Intervals.icu. FitnessSyncer ji může předat do Suunto, pokud je tento cíl v účtu nastavený. Ukázkové jízdy se do historie neukládají.
+Skutečné jízdy se ukládají do historie. Vybranou jízdu lze exportovat jako TCX nebo ručně odeslat na Stravu. Ukázkové jízdy se do historie neukládají. V polovině skutečné jízdy se uloží snímek okna, který najdeš přes **Fotky z trasy…**. Obsah mapového panelu závisí na použitém pohledu. Při dojezdu do cíle zazní krátký pokřik.
 
-Před odesláním na Stravu nebo Intervals.icu lze upravit název a přidat popis. Pro Intervals.icu otevři v historii **Nastavit Intervals.icu** a zadej osobní API klíč ze sekce **Developer Settings** ve svém [účtu Intervals.icu](https://intervals.icu/settings). Potom vyber jízdu a klikni na **Odeslat na Intervals.icu**. Nově nahranou aktivitu aplikace označí jako virtuální jízdu.
+Před odesláním na Stravu lze upravit název a přidat popis.
 
 Pro společnou jízdu použijte shodnou GPX trasu včetně směru a vybraného úseku. Hostitel může použít přiložený server na portu TCP 5077 v důvěryhodné místní nebo soukromé VPN síti. Ostatní zadají jeho adresu a kód místnosti. Každý jezdec spouští a ovládá vlastní jízdu; v aplikaci vidíte vzájemnou polohu.
 
@@ -48,7 +48,7 @@ Pro společnou jízdu použijte shodnou GPX trasu včetně směru a vybraného �
 
 ## Nastavení a vývoj
 
-Tlačítko **Zkontrolovat aktualizace** nabídne novější veřejný balíček z GitHubu. Ve společné instalaci ve složce `Program Files\SuitoRide` se aplikace aktualizuje na místě po potvrzení správcem a zástupce ve Startu dál funguje. Osobní aktualizace se ukládají do `%LOCALAPPDATA%\SuitoRide\installed`. Nastavení, historie a webová data jsou v adresáři `%LOCALAPPDATA%\SuitoRide` pro každý účet Windows. Klíče a přístupové tokeny se ukládají zašifrované pro aktuální účet Windows.
+Tlačítko **Zkontrolovat aktualizace** nabídne novější veřejný balíček z GitHubu. Ve společné instalaci ve složce `Program Files\SuitoRide` se aplikace aktualizuje na místě po potvrzení správcem a zástupce ve Startu dál funguje. Osobní aktualizace se nainstaluje do složky právě spuštěné kopie a aplikace se znovu otevře ze stejné cesty. Nastavení, historie a webová data jsou v adresáři `%LOCALAPPDATA%\SuitoRide` pro každý účet Windows. Klíče a přístupové tokeny se ukládají zašifrované pro aktuální účet Windows.
 
 Výchozí jazyk vychází z regionálního formátu Windows. V Nastavení lze ručně vybrat češtinu, angličtinu, němčinu, francouzštinu, španělštinu, japonštinu, polštinu nebo slovenštinu. Ruční volba se použije při příštím spuštění; pro nepodporované regionální formáty se používá angličtina.
 

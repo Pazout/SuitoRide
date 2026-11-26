@@ -122,7 +122,7 @@
             <TextBlock x:Name="Power" Text="— W" FontSize="20"/>
             <TextBlock x:Name="TrainerActivity" Visibility="Collapsed" Foreground="#F5BE5B" TextWrapping="Wrap" TextTrimming="None"/>
           </StackPanel>
-          <StackPanel><TextBlock Text="{local:Ui 'RYCHLOST'}" Foreground="#99b2bf"/><StackPanel Orientation="Horizontal"><TextBlock x:Name="Speed" Text="— km/h" FontSize="20"/><TextBlock x:Name="SpeedTrend" FontSize="19" Margin="6,0,0,0" ToolTip="{local:Ui 'Porovnání s průměrnou rychlostí jízdy'}"/></StackPanel></StackPanel>
+          <StackPanel><TextBlock Text="{local:Ui 'RYCHLOST'}" Foreground="#99b2bf"/><StackPanel Orientation="Horizontal"><TextBlock x:Name="Speed" Text="— km/h" FontSize="20" Background="Transparent" PreviewMouseDown="ChangeDemoSpeed"/><TextBlock x:Name="SpeedTrend" FontSize="19" Margin="6,0,0,0" ToolTip="{local:Ui 'Porovnání s průměrnou rychlostí jízdy'}"/></StackPanel></StackPanel>
           <StackPanel><TextBlock Text="{local:Ui 'KADENCE'}" Foreground="#99b2bf"/><TextBlock x:Name="Cadence" Text="{local:Ui '— ot/min'}" FontSize="20"/></StackPanel>
           <StackPanel>
             <TextBlock Text="{local:Ui 'TEP'}" Foreground="#99b2bf"/>
