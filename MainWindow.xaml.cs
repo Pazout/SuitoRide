@@ -30,7 +30,7 @@ public partial class MainWindow : Window
     GattCharacteristic? data, control;
     TaskCompletionSource<byte[]>? reply;
     readonly SemaphoreSlim gate=new(1,1);
-    double distance,speed,lastGrade=double.NaN;
+    double distance,speed,trainerSpeed,lastGrade=double.NaN;
     double demoSpeedKmh=20;
     DateTime lastData=DateTime.MinValue,lastTick;
     bool riding,demo,ticking;
@@ -392,21 +392,54 @@ public partial class MainWindow : Window
             if((f&1)==0){v=BitConverter.ToUInt16(b,i)/100.0;i+=2;}if((f&2)!=0)i+=2;
             if((f&4)!=0){c=BitConverter.ToUInt16(b,i)/2.0;i+=2;}if((f&8)!=0)i+=2;if((f&16)!=0)i+=3;if((f&32)!=0)i+=2;
             if((f&64)!=0)p=BitConverter.ToInt16(b,i);
-            Dispatcher.BeginInvoke(()=>{if(v.HasValue&&(!riding||!demo)){speed=v.Value;lastData=DateTime.UtcNow;Speed.Text=$"{speed:F1} km/h";}if(c.HasValue){Cadence.Text=UiText.Format($"{c:F0} ot/min");currentCadence=c.Value;cadenceReceived=DateTime.UtcNow;}if(p.HasValue){Power.Text=$"{p:F0} W";currentPower=p.Value;powerReceived=DateTime.UtcNow;}});
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (!ReferenceEquals(data, s)) return;
+                var now = DateTime.UtcNow;
+                if (v.HasValue)
+                {
+                    trainerSpeed = v.Value;
+                    lastData = now;
+                    if (!riding || !demo)
+                    {
+                        speed = trainerSpeed;
+                        Speed.Text = $"{speed:F1} km/h";
+                    }
+                }
+                if (c.HasValue)
+                {
+                    Cadence.Text = UiText.Format($"{c:F0} ot/min");
+                    currentCadence = c.Value;
+                    cadenceReceived = now;
+                }
+                if (p.HasValue)
+                {
+                    Power.Text = $"{p:F0} W";
+                    currentPower = p.Value;
+                    powerReceived = now;
+                }
+                if (v == 0 || c == 0) rideStartCountdown?.ObserveStop();
+            });
         }catch(ArgumentException){}
     }
-    async void StartRide(object s,RoutedEventArgs e){
-        if(route.Count<2){Status.Text=UiText.Get("Nejprve načtěte GPX.");return;}
-        if(trainerConnection!=null){Status.Text=UiText.Get("Trenažér se ještě připojuje.");return;}
-        if(control==null||device?.ConnectionStatus!=BluetoothConnectionStatus.Connected){Status.Text=UiText.Get("Nejprve připojte trenažér.");return;}
-        if(riding||ticking||countdown!=null||starting)return;if(pendingRide!=null){Status.Text=UiText.Get("Nejprve ulož čekající jízdu.");return;}starting=true;try{if(!await PrepareCountdown(10))return;if(control==null||device?.ConnectionStatus!=BluetoothConnectionStatus.Connected){Status.Text=UiText.Get("Trenažér není připojen.");return;}await Command([7]);demo=false;BeginRide();}catch(Exception ex){Status.Text=UiText.Get("Jízdu nelze spustit: ")+ex.Message;}finally{starting=false;}
+    void StartDemo(object sender, RoutedEventArgs e)
+    {
+        if (trainerConnection != null && !trainerConnectingAutomatically)
+        {
+            Status.Text = UiText.Get("Trenažér se ještě připojuje.");
+            return;
+        }
+        if (route.Count < 2) { Status.Text = UiText.Get("Nejprve načtěte GPX."); return; }
+        if (riding || ticking || starting) return;
+
+        demo = true;
+        BeginRide();
     }
-    async void StartDemo(object s,RoutedEventArgs e){if(trainerConnection!=null&&!trainerConnectingAutomatically){Status.Text=UiText.Get("Trenažér se ještě připojuje.");return;}if(route.Count<2){Status.Text=UiText.Get("Nejprve načtěte GPX.");return;}if(riding||ticking||countdown!=null||starting)return;starting=true;try{if(!await PrepareCountdown(3))return;demo=true;BeginRide();}finally{starting=false;}}
     void BeginRide()
     {
         distance=demo ? DisplayDistance : 0;
         ClearProfilePreview();
-        speed=demo ? demoSpeedKmh : 0;
+        speed = demo ? demoSpeedKmh : trainerSpeed;
         lastStreetDistance=double.NaN;
         lastGrade=double.NaN;
         lastTick=DateTime.UtcNow;
@@ -416,15 +449,18 @@ public partial class MainWindow : Window
         streetRidePhotos=demo ? null : LoadRidePhotoCapture();
         rideSnapshot=null;
         session=demo?null:new RideSession(RouteName.Text, distance, CurrentRidePosition(), routeHasUnsavedEdits ? null : routeSourcePath);
-        currentPower=null;
-        currentCadence=null;
-        powerReceived=DateTime.MinValue;
-        cadenceReceived=DateTime.MinValue;
+        if (demo)
+        {
+            currentPower=null;
+            currentCadence=null;
+            powerReceived=DateTime.MinValue;
+            cadenceReceived=DateTime.MinValue;
+        }
         riding=true;
         SetRideMode(true);
         UpdateView();
         timer.Start();
-        PlayCountdownSound(true);
+        if (!demo) PlayCountdownSound(true);
         Status.Text=demo?UiText.Get("Ukázková jízda: odpor se nemění."):UiText.Get("Jízda zahájena.");
     }
     async void Tick(object? s,EventArgs e){
@@ -475,7 +511,7 @@ public partial class MainWindow : Window
         DrawProfile(null,null);
         SendPosition();
     }
-    async void StopRide(object s,RoutedEventArgs e){if(countdown!=null){countdown.Cancel();Status.Text=UiText.Get("Odpočítávání zrušeno.");return;}bool real=riding&&!demo;riding=false;timer.Stop();SetRideMode(false);Status.Text=UiText.Get("Jízda zastavena.")+EndRide("Ukončeno");if(real)try{await Command([8,1]);}catch(Exception ex){Status.Text=UiText.Get("Jízda zastavena, trenažér nepotvrdil zastavení: ")+ex.Message;}}
+    async void StopRide(object s,RoutedEventArgs e){if(countdown!=null){CancelRideStart();return;}bool real=riding&&!demo;riding=false;timer.Stop();SetRideMode(false);Status.Text=UiText.Get("Jízda zastavena.")+EndRide("Ukončeno");if(real)try{await Command([8,1]);}catch(Exception ex){Status.Text=UiText.Get("Jízda zastavena, trenažér nepotvrdil zastavení: ")+ex.Message;}}
     void DisconnectTrainer()
     {
         if(trainerConnection!=null){trainerConnection.Cancel();return;}
@@ -485,7 +521,9 @@ public partial class MainWindow : Window
     void DisconnectCore()
     {
         EndRide("Přerušeno");riding=false;timer.Stop();SetRideMode(false);
-        speed=0;lastData=DateTime.MinValue;
+        speed = trainerSpeed = 0;
+        lastData = cadenceReceived = powerReceived = DateTime.MinValue;
+        currentCadence = currentPower = null;
         ReleaseTrainer();
     }
     void ReleaseTrainer()
@@ -1221,37 +1259,6 @@ public partial class MainWindow : Window
         } catch(Exception ex) { MessageBox.Show(this,UiText.Get("Úpravu nebo uložení trasy se nepodařilo dokončit: ")+ex.Message,UiText.Get("Upravit trasu")); }
     }
 
-    CancellationTokenSource? countdown;
-    bool starting;
-    async Task<bool> PrepareCountdown(int seconds)
-    {
-        if(countdown!=null)return false;
-        var cancel=new CancellationTokenSource();countdown=cancel;
-        StartButton.IsEnabled=false;DemoButton.IsEnabled=false;SetupPanel.IsEnabled=false;
-        StopButton.Visibility=Visibility.Visible;
-        CountdownWindow? overlay=null;
-        try {
-            overlay=new CountdownWindow(seconds,()=>{if(!cancel.IsCancellationRequested){Status.Text=UiText.Get("Odpočítávání zrušeno.");cancel.Cancel();}});
-            if(IsVisible){overlay.Owner=this;var bounds=GetMonitorBounds(this);if(bounds.HasValue)overlay.PlaceOnMonitor(bounds.Value);}
-            overlay.Show();
-            if(IsVisible)PlaceOnOwnerMonitor(overlay,this);
-            for(int remaining=seconds;remaining>0;remaining--) {
-                Status.Text=UiText.Format($"Jízda začne za {remaining} s…");
-                overlay.SetRemaining(remaining);
-                if(remaining<=3)PlayCountdownSound(false);
-                await Task.Delay(1000,cancel.Token);
-            }
-            cancel.Token.ThrowIfCancellationRequested();
-            return true;
-        } catch(OperationCanceledException) { return false; }
-        catch(Exception ex) { Status.Text=UiText.Get("Odpočet se nepodařilo spustit: ")+ex.Message;return false; }
-        finally {
-            overlay?.Dismiss();
-            if(ReferenceEquals(countdown,cancel))countdown=null;
-            cancel.Dispose();StartButton.IsEnabled=true;DemoButton.IsEnabled=true;SetupPanel.IsEnabled=true;
-            if(!riding)StopButton.Visibility=Visibility.Collapsed;
-        }
-    }
     void SaveEditedGpx(string path)
     {
         XNamespace ns="http://www.topografix.com/GPX/1/1";

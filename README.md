@@ -9,7 +9,7 @@ Suito Ride je aplikace pro Windows pro jízdu po GPX trase na chytrém cyklotren
 1. Na stránce [Releases](https://github.com/Pazout/SuitoRide/releases/latest) stáhni ZIP pro Windows x64, rozbal celý obsah do jedné složky a spusť SuitoRide.exe. ZIP obsahuje potřebný .NET runtime. Pro mapy je potřeba Microsoft Edge WebView2 Runtime a připojení k internetu. S připojeným vedlejším monitorem se aplikace otevře maximalizovaná na něm.
 2. Načti GPX s nadmořskou výškou u každého bodu a jedním souvislým úsekem. Pro vyzkoušení je v repozitáři ukazka.gpx. Katalog zobrazuje trasy z vybrané složky a počty jejich dokončení. GPX se načte hned po výběru v katalogu. Poslední použitý GPX se při spuštění obnoví, pokud je soubor stále dostupný.
 3. Ukázkovou jízdu můžeš spustit bez trenažéru. Pro skutečnou jízdu zapni Bluetooth a v dialogu **Trenažér** vyhledej a připoj vybrané zařízení. Aplikace si zapamatuje poslední úspěšně připojený trenažér a při příštím spuštění ho zkusí vyhledat a připojit.
-4. Ukázková jízda začíná odpočtem 3–2–1, skutečná má deset sekund. Odpočet lze zrušit klávesou Escape nebo tlačítkem v okně.
+4. Ukázková jízda začne okamžitě. Před skutečnou jízdou se můžeš rozjet. Pětisekundový odpočet začne při rychlosti nad 15 km/h a kladné kadenci. Když rychlost nebo kadence klesne na nulu, vrátíš se k rozjetí. Přípravu lze zrušit klávesou Escape nebo tlačítkem v okně.
 
 ## Mapy a trasy
 

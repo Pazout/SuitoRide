@@ -7,11 +7,11 @@ namespace SuitoRide;
 
 internal sealed class CountdownWindow : Window
 {
-    readonly TextBlock number;
+    readonly TextBlock number, subtitle, telemetry, hint;
     readonly Action cancel;
     bool dismissing;
 
-    public CountdownWindow(int initialSeconds,Action cancelCountdown)
+    public CountdownWindow(Action cancelCountdown)
     {
         cancel=cancelCountdown;
         Title=UiText.Get("Příprava na jízdu");
@@ -30,12 +30,18 @@ internal sealed class CountdownWindow : Window
         layout.RowDefinitions.Add(new RowDefinition { Height=GridLength.Auto });
         var center=new StackPanel { VerticalAlignment=VerticalAlignment.Center, HorizontalAlignment=HorizontalAlignment.Center };
         center.Children.Add(new TextBlock { Text=UiText.Get("PŘIPRAV SE NA JÍZDU"), FontSize=28, FontWeight=FontWeights.SemiBold, Foreground=new SolidColorBrush(Color.FromRgb(150,215,197)), HorizontalAlignment=HorizontalAlignment.Center });
-        number=new TextBlock { Text=initialSeconds.ToString(), FontSize=230, FontWeight=FontWeights.Bold, HorizontalAlignment=HorizontalAlignment.Center, TextAlignment=TextAlignment.Center };
+        number=new TextBlock { Text="—", FontSize=230, FontWeight=FontWeights.Bold, HorizontalAlignment=HorizontalAlignment.Center, TextAlignment=TextAlignment.Center };
         center.Children.Add(new Viewbox { Stretch=Stretch.Uniform, MaxHeight=320, Child=number });
-        center.Children.Add(new TextBlock { Text=UiText.Get("sekund do startu"), FontSize=24, HorizontalAlignment=HorizontalAlignment.Center });
+        subtitle = new TextBlock { FontSize=24, TextAlignment=TextAlignment.Center };
+        telemetry = new TextBlock { FontSize=22, TextAlignment=TextAlignment.Center, Margin=new Thickness(0,12,0,0) };
+        hint = new TextBlock { FontSize=24, TextAlignment=TextAlignment.Center, TextWrapping=TextWrapping.Wrap, MaxWidth=780, Margin=new Thickness(0,16,0,0) };
+        center.Children.Add(subtitle);
+        center.Children.Add(telemetry);
+        center.Children.Add(hint);
+        UpdateStart(null, null, null, interrupted: false);
         Grid.SetRow(center,0);layout.Children.Add(center);
 
-        var button=new ActionButton(ButtonIcons.Close, "Zrušit odpočet") { Padding=new Thickness(28,14,28,14), FontSize=18,
+        var button=new ActionButton(ButtonIcons.Close, "Zrušit start") { Padding=new Thickness(28,14,28,14), FontSize=18,
             HorizontalAlignment=HorizontalAlignment.Center, Margin=new Thickness(0,0,0,32),
             Style=(Style)Application.Current.FindResource("HighContrastButton") };
         button.Click+=(_,_)=>cancel();
@@ -52,7 +58,34 @@ internal sealed class CountdownWindow : Window
         Left=bounds.Left;Top=bounds.Top;Width=bounds.Width;Height=bounds.Height;
     }
 
-    public void SetRemaining(int remaining) => number.Text=remaining.ToString();
+    public void UpdateStart(int? remaining, double? speed, double? cadence, bool interrupted)
+    {
+        number.Text = remaining?.ToString() ?? speed?.ToString("F1") ?? "—";
+        subtitle.Text = remaining.HasValue ? UiText.Get("sekund do startu") : "km/h";
+
+        string speedText = speed?.ToString("F1") ?? "—";
+        string cadenceText = cadence?.ToString("F0") ?? "—";
+        telemetry.Text = UiText.Format($"Rychlost {speedText} km/h  ·  Kadence {cadenceText} ot/min");
+        hint.Text = remaining.HasValue ? "" : interrupted
+            ? UiText.Format($"Odpočet přerušen. Rozjeď se znovu nad {RideStartCountdown.SpeedThresholdKmh} km/h.")
+            : UiText.Format($"Rozjeď se nad {RideStartCountdown.SpeedThresholdKmh} km/h a pokračuj ve šlapání.");
+    }
+
+    public void ShowConnecting()
+    {
+        number.Text = "—";
+        subtitle.Text = UiText.Get("Trenažér se ještě připojuje.");
+        telemetry.Text = "";
+        hint.Text = "";
+    }
+
+    public void ShowStarting()
+    {
+        number.Text = "0";
+        subtitle.Text = UiText.Get("Zahajuji jízdu…");
+        hint.Text = "";
+    }
+
     public void Dismiss()
     {
         dismissing=true;
