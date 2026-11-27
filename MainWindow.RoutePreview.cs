@@ -13,6 +13,13 @@ public partial class MainWindow
 
     void BeginProfilePreview(object sender, MouseButtonEventArgs e)
     {
+        if (CanPreviewRoute && e.ClickCount == 2)
+        {
+            e.Handled = true;
+            if (Profile.IsMouseCaptured) Profile.ReleaseMouseCapture();
+            OpenRouteEditor();
+            return;
+        }
         if(!PreviewRouteAt(e.GetPosition(Profile).X))return;
         Profile.Focus();
         if(!Profile.CaptureMouse())UpdateStreetView(true);

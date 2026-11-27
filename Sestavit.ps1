@@ -7,7 +7,7 @@ $running = Get-Process -Name 'SuitoRide' -ErrorAction SilentlyContinue |
 if ($running) { throw 'Nejprve zavři Suito Ride ve složce app a poté sestavení zopakuj.' }
 Push-Location $root
 try {
-    dotnet build SuitoRide.csproj -c Release -o $output
+    dotnet publish SuitoRide.csproj -c Release -r win-x64 --self-contained true -o $output
     if ($LASTEXITCODE -ne 0) { throw 'Sestavení aplikace selhalo.' }
     dotnet publish SpolecnaJizda.Server\SpolecnaJizda.Server.csproj -c Release -r win-x64 --self-contained true -o (Join-Path $output 'server')
     if ($LASTEXITCODE -ne 0) { throw 'Sestavení serveru společné jízdy selhalo.' }

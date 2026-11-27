@@ -16,7 +16,10 @@ using Windows.Storage.Streams;
 namespace SuitoRide;
 public partial class MainWindow : Window
 {
-    record Pt(double Lat,double Lon,double Ele,double D);
+    record Pt(double Lat,double Lon,double Ele,double D,DateTimeOffset? Time=null)
+    {
+        public double RawElevation { get; init; } = Ele;
+    }
     readonly List<Pt> route=[];
     ElevationProfile? elevationProfile;
     BluetoothDeviceChoice? selectedTrainer;
@@ -33,7 +36,7 @@ public partial class MainWindow : Window
     bool riding,demo,ticking;
     readonly Stopwatch rideClock=new();
     double rideStartDistance;
-    public MainWindow(){InitializeComponent();InitializeProfileLegend();Language=System.Windows.Markup.XmlLanguage.GetLanguage(CultureInfo.CurrentCulture.IetfLanguageTag);Title=$"Suito Ride {typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.1.0"}";timer.Tick+=Tick;Closing+=HandleClosing;Loaded+=(_,_)=>{PlaceOnSecondaryMonitor();InitializeHeartRate();InitializeSram();RestoreRiderName();InitMap();RestoreCatalog();RestoreLastRoute();RestorePanoramaSpacing();AutoStartPanorama();trainerRestoreTask=RestoreTrainerAsync();heartRateRestoreTask=RestoreHeartRateAsync();};Closed+=(_,_)=>{ResetStreetPhoto();sharedRide?.Shutdown();trainerConnection?.Cancel();heartRateAttempt?.Cancel();DisconnectHeartRate();StopSramRead();StopSramGear();DisconnectCore();};}
+    public MainWindow(){InitializeComponent();InitializeProfileLegend();Language=System.Windows.Markup.XmlLanguage.GetLanguage(CultureInfo.CurrentCulture.IetfLanguageTag);Title=$"Suito Ride {typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.1.0"}";timer.Tick+=Tick;Closing+=HandleClosing;Loaded+=(_,_)=>{PlaceOnSecondaryMonitor();InitializeHeartRate();InitializeSram();RestoreRiderName();InitMap();RestoreCatalog();RestoreRouteSmoothing();RestoreLastRoute();RestorePanoramaSpacing();AutoStartPanorama();trainerRestoreTask=RestoreTrainerAsync();heartRateRestoreTask=RestoreHeartRateAsync();};Closed+=(_,_)=>{ResetStreetPhoto();sharedRide?.Shutdown();trainerConnection?.Cancel();heartRateAttempt?.Cancel();DisconnectHeartRate();StopSramRead();StopSramGear();DisconnectCore();};}
     bool installingUpdate;
     async void CheckForUpdates(object sender,RoutedEventArgs e)
     {
@@ -97,6 +100,18 @@ public partial class MainWindow : Window
             button.IsEnabled=true;
         }
     }
+    void OpenWTracks(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            using var browser = Process.Start(new ProcessStartInfo("https://opoto.github.io/wtracks/") { UseShellExecute = true });
+        }
+        catch (System.ComponentModel.Win32Exception ex)
+        {
+            Status.Text = UiText.Get("Nelze otevřít prohlížeč: ") + ex.Message;
+        }
+    }
+
     void LoadRoute(object s,RoutedEventArgs e)
     {
         if(riding||ticking){Status.Text=UiText.Get("Nejprve zastavte jízdu.");return;}
@@ -120,9 +135,16 @@ public partial class MainWindow : Window
                 double ele=double.Parse(n.Elements().FirstOrDefault(x=>x.Name.LocalName=="ele")?.Value??"",CultureInfo.InvariantCulture);
                 if(!double.IsFinite(lat)||!double.IsFinite(lon)||!double.IsFinite(ele)||Math.Abs(lat)>90||Math.Abs(lon)>180)throw new Exception(UiText.Get("Neplatné souřadnice nebo výška."));
                 double d=points.Count==0?0:points[^1].D+Dist(points[^1].Lat,points[^1].Lon,lat,lon);
-                if(points.Count==0||d>points[^1].D+0.000001)points.Add(new(lat,lon,ele,d));
+                if (points.Count == 0 || d > points[^1].D + 0.000001)
+                {
+                    string? timestamp = n.Elements().FirstOrDefault(x => x.Name.LocalName == "time")?.Value;
+                    DateTimeOffset? time = DateTimeOffset.TryParse(timestamp, CultureInfo.InvariantCulture,
+                        DateTimeStyles.AssumeUniversal, out var parsed) ? parsed : null;
+                    points.Add(new(lat, lon, ele, d, time));
+                }
             }
             if(points.Count<2||points[^1].D<10)throw new Exception(UiText.Get("Trasa musí mít alespoň dva různé body s výškou."));
+            SmoothRouteElevations(points, routeSmoothingIterations);
             riding=false;timer.Stop();SetRideMode(false);SetRoute(points);distance=0;
             routeSourcePath=System.IO.Path.GetFullPath(path);
             routeHasUnsavedEdits=false;
@@ -139,7 +161,7 @@ public partial class MainWindow : Window
     }
     void SetRoute(List<Pt> points)
     {
-        elevationProfile = new ElevationProfile(points.Select(p => (p.D, p.Ele)));
+        RebuildElevationProfile(points);
         ClearProfilePreview();
         ResetProfileTelemetry();
         route.Clear();
@@ -147,8 +169,20 @@ public partial class MainWindow : Window
         ResetReferenceRide();
         if (IsStreetPhotoProvider(streetProvider)) { ResetStreetPhoto(); SendMap(new { type = "streetview-off" }); }
     }
+    void RebuildElevationProfile(List<Pt> points) =>
+        elevationProfile = new ElevationProfile(points.Select(p => (p.D, p.Ele)));
+
     static double Dist(double a,double b,double c,double d){double r=Math.PI/180,x=(c-a)*r,y=(d-b)*r,h=Math.Pow(Math.Sin(x/2),2)+Math.Cos(a*r)*Math.Cos(c*r)*Math.Pow(Math.Sin(y/2),2);return 12742000*Math.Asin(Math.Sqrt(Math.Clamp(h,0,1)));}
-    double Elev(double d){d=Math.Clamp(d,0,route[^1].D);int i=route.FindIndex(p=>p.D>=d);if(i<=0)return route[0].Ele;var a=route[i-1];var b=route[i];return a.Ele+(b.Ele-a.Ele)*(d-a.D)/(b.D-a.D);}
+    double Elev(double distance, bool original = false)
+    {
+        distance = Math.Clamp(distance, 0, route[^1].D);
+        int index = route.FindIndex(p => p.D >= distance);
+        double Height(Pt point) => original ? point.RawElevation : point.Ele;
+        if (index <= 0) return Height(route[0]);
+        var left = route[index - 1];
+        var right = route[index];
+        return Height(left) + (Height(right) - Height(left)) * (distance - left.D) / (right.D - left.D);
+    }
     double SlopeAt(double meters){double a=Math.Max(0,meters-25),b=Math.Min(route[^1].D,meters+25);return b>a?Math.Clamp(100*(Elev(b)-Elev(a))/(b-a),-10,15):0;}
     void DrawProfile(object? s,SizeChangedEventArgs? e)
     {
@@ -1108,36 +1142,68 @@ public partial class MainWindow : Window
     {
         if(route.Count<2 || start<0 || end>route[^1].D || end-start<10)throw new ArgumentException(UiText.Get("Neplatný úsek trasy."));
         var first=PositionAt(start); var last=PositionAt(end);
-        var selected=new List<Pt>{new(first.Lat,first.Lon,Elev(start),0)};
+        var selected=new List<Pt>{new(first.Lat,first.Lon,Elev(start, original: true),0,RouteTimeAt(start))};
         selected.AddRange(route.Where(p=>p.D>start && p.D<end));
-        selected.Add(new(last.Lat,last.Lon,Elev(end),0));
+        selected.Add(new(last.Lat,last.Lon,Elev(end, original: true),0,RouteTimeAt(end)));
         if(reverse)selected.Reverse();
         var result=new List<Pt>();double length=0;
         foreach(var point in selected)
         {
             if(result.Count>0){double step=Dist(result[^1].Lat,result[^1].Lon,point.Lat,point.Lon);if(step<0.000001)continue;length+=step;}
-            result.Add(new(point.Lat,point.Lon,point.Ele,length));
+            result.Add(point with { D = length });
         }
         if(result.Count<2 || length<1)throw new InvalidDataException(UiText.Get("Vybraný úsek neobsahuje dostatek různých bodů."));
         return result;
     }
-    void EditRoute(object s,RoutedEventArgs e)
+    void EditRoute(object s, RoutedEventArgs e) => OpenRouteEditor();
+
+    void OpenRouteEditor()
     {
-        if(riding||ticking){Status.Text=UiText.Get("Nejprve zastavte jízdu.");return;}
+        if(riding||starting||ticking||countdown!=null){Status.Text=UiText.Get("Nejprve zastavte jízdu.");return;}
         if(route.Count<2){Status.Text=UiText.Get("Nejprve načtěte GPX trasu.");return;}
         if(SharedRouteLocked())return;
         if(elevationProfile==null)return;
-        var dialog=new RouteEditWindow(route[^1].D,elevationProfile){Owner=this};
+        var dialog=new RouteEditWindow(route[^1].D,elevationProfile,routeSmoothingIterations){Owner=this};
         if(dialog.ShowDialog()!=true)return;
         try {
-            var edited=CreateEditedRoute(dialog.StartMeters,dialog.EndMeters,dialog.Reverse);
+            bool intensityChanged = routeSmoothingIterations != dialog.SmoothingIterations;
+            bool sectionChanged = dialog.StartMeters > 0 || dialog.EndMeters < route[^1].D || dialog.Reverse;
+            var edited = sectionChanged ? CreateEditedRoute(dialog.StartMeters, dialog.EndMeters, dialog.Reverse) : route.ToList();
+            SmoothRouteElevations(edited, dialog.SmoothingIterations);
+            int pointsBeforeCompression = edited.Count;
+            if (dialog.Compress)
+            {
+                edited = CompressRoute(edited, dialog.CompressionTolerance, dialog.MaxDistance, dialog.MaxSeconds);
+                if (edited.Count < pointsBeforeCompression)
+                    SmoothRouteElevations(edited, dialog.SmoothingIterations);
+            }
+
+            if (intensityChanged) RememberRouteSmoothing(dialog.SmoothingIterations);
+            if (!sectionChanged && edited.Count == pointsBeforeCompression)
+            {
+                if (intensityChanged)
+                {
+                    route.Clear();
+                    route.AddRange(edited);
+                    RebuildElevationProfile(route);
+                    UpdateRouteInfo();
+                    DrawProfile(null, null);
+                    UpdateView();
+                    SendRoute();
+                }
+                if (dialog.Compress)
+                    Status.Text = UiText.Format($"Komprese trasy: {pointsBeforeCompression} → {edited.Count} bodů.");
+                return;
+            }
             SetRoute(edited);distance=0;lastStreetDistance=double.NaN;
             RouteName.Text=RouteName.Text+UiText.Get(" – upravená");
             routeHasUnsavedEdits=true;
             SyncCatalogSelection();
             UpdateRouteInfo();
             UpdateView();SendRoute();UpdateStreetView(true);
-            Status.Text=UiText.Get("Upravená trasa je připravena k jízdě.");
+            Status.Text = dialog.Compress
+                ? UiText.Format($"Komprese trasy: {pointsBeforeCompression} → {edited.Count} bodů.")
+                : UiText.Get("Upravená trasa je připravena k jízdě.");
             OfferSavedReferenceRide();
             if(MessageBox.Show(this,UiText.Get("Chceš upravenou trasu uložit jako nový GPX soubor?"),UiText.Get("Upravit trasu"),MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes)return;
             var save=new SaveFileDialog{Filter="GPX trasa (*.gpx)|*.gpx",DefaultExt=".gpx",AddExtension=true,FileName=RouteName.Text+".gpx",OverwritePrompt=true};
@@ -1193,7 +1259,8 @@ public partial class MainWindow : Window
             new XElement(ns+"gpx",new XAttribute("version","1.1"),new XAttribute("creator","Suito Ride"),
                 new XElement(ns+"trk",new XElement(ns+"name",RouteName.Text),
                     new XElement(ns+"trkseg",route.Select(p=>new XElement(ns+"trkpt",
-                        new XAttribute("lat",p.Lat),new XAttribute("lon",p.Lon),new XElement(ns+"ele",p.Ele)))))));
+                        new XAttribute("lat",p.Lat),new XAttribute("lon",p.Lon),new XElement(ns+"ele",p.RawElevation),
+                        p.Time is DateTimeOffset time ? new XElement(ns+"time",time.UtcDateTime) : null))))));
         doc.Save(path);
     }
     SharedRideWindow? sharedRide;
@@ -1201,7 +1268,7 @@ public partial class MainWindow : Window
     readonly Dictionary<string,SharedRider> otherRiders=[];
     string RouteFingerprint()
     {
-        var text=string.Join(";",route.Select(p=>FormattableString.Invariant($"{p.Lat:R},{p.Lon:R},{p.Ele:R}")));
+        var text=string.Join(";",route.Select(p=>FormattableString.Invariant($"{p.Lat:R},{p.Lon:R},{p.RawElevation:R}")));
         return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(text)));
     }
     void OpenSharedRide(object s,RoutedEventArgs e)

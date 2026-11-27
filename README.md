@@ -19,6 +19,8 @@ Na výškovém profilu lze vybrat nový začátek a cíl, obrátit směr a ulož
 
 ### Příprava a úprava GPX
 
+Suito Ride po načtení GPX automaticky vyhladí výšky poslední nastavenou intenzitou. Intenzitu změníš v dialogu **Upravit trasu…**, který otevřeš i dvojklikem na výškový profil. Vyhlazení se do GPX nezapisuje. Při úpravě úseku nebo zmenšení počtu bodů můžeš změněnou trasu ručně uložit jako nový GPX. Tlačítko **WTracks** vedle **Načíst GPX…** otevře webový editor.
+
 1. Otevři GPX ve WTracks a klikni na tabulku statistik pod mapou. Tím zobrazíš výškový profil trasy. [WTracks](https://opoto.github.io/wtracks/)
 2. V nabídce **Tools** použij **Compress**, pokud chceš zmenšit GPX odebráním nadbytečných bodů. Pro vyhlazení výškového profilu použij **Smooth** a výsledek zkontroluj v grafu. Suito Ride používá výškový profil k výpočtu sklonu a odporu trenažéru.
 3. Upravenou trasu ulož přes **Save → As File** a načti ji do Suito Ride. GPX má mít jeden souvislý úsek a nadmořskou výšku u každého bodu.

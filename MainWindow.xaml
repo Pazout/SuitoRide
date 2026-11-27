@@ -42,6 +42,7 @@
             </ComboBox.ItemTemplate>
           </ComboBox>
           <local:ActionButton Content="{local:Ui 'Načíst GPX', Prompt=True}" Icon="{x:Static local:ButtonIcons.Route}" Click="LoadRoute"/>
+          <local:ActionButton Content="WTracks" Icon="{x:Static local:ButtonIcons.External}" Click="OpenWTracks" ToolTip="{local:Ui 'Upravit GPX ve WTracks v prohlížeči'}"/>
           <local:ActionButton Content="{local:Ui 'Upravit trasu', Prompt=True}" Icon="{x:Static local:ButtonIcons.Edit}" Click="EditRoute"/>
         </StackPanel>
       </Viewbox>
@@ -111,7 +112,7 @@
     <Canvas x:Name="Profile" Grid.Row="4" Background="#1c2c38" SizeChanged="DrawProfile" ClipToBounds="True" Focusable="True"
             MouseLeftButtonDown="BeginProfilePreview" MouseMove="MoveProfilePreview" MouseLeftButtonUp="FinishProfilePreview"
             LostMouseCapture="RefreshPreviewPanorama"
-            ToolTip="{local:Ui 'Mimo jízdu klikni nebo táhni po profilu. Náhled ukončíš klávesou Esc.'}"/>
+            ToolTip="{local:Ui 'Mimo jízdu klikni nebo táhni po profilu. Dvojklik otevře úpravu trasy. Náhled ukončíš klávesou Esc.'}"/>
     <ProgressBar x:Name="Progress" Grid.Row="5" Height="6" Margin="0,4,0,6" Maximum="100"/>
     <Grid Grid.Row="6">
       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
