@@ -17,6 +17,14 @@ Základní mapa a navigační pohled MapLibre fungují bez klíče. Navigace se 
 
 Na výškovém profilu lze vybrat nový začátek a cíl, obrátit směr a uložit vybraný úsek jako nový GPX. Aplikace ukazuje celkové stoupání i klesání a náhled na příštích 50 metrů. Kliknutím na náhled můžeš postupně přepnout dosah na 100, 150, 250 a 500 m. Velký graf při jízdě ukazuje rychlost, tep, kadenci a výkon. Ujetá vzdálenost vychází z rychlosti hlášené trenažérem. Přesnost sklonu závisí na výškových údajích GPX.
 
+### Příprava a úprava GPX
+
+1. Otevři GPX ve WTracks a klikni na tabulku statistik pod mapou. Tím zobrazíš výškový profil trasy. [WTracks](https://opoto.github.io/wtracks/)
+2. V nabídce **Tools** použij **Compress**, pokud chceš zmenšit GPX odebráním nadbytečných bodů. Pro vyhlazení výškového profilu použij **Smooth** a výsledek zkontroluj v grafu. Suito Ride používá výškový profil k výpočtu sklonu a odporu trenažéru.
+3. Upravenou trasu ulož přes **Save → As File** a načti ji do Suito Ride. GPX má mít jeden souvislý úsek a nadmořskou výšku u každého bodu.
+
+Trasu můžeš také vytvořit nebo upravit v gpx.studio či naplánovat v Mapy.com a vyexportovat do GPX. Pro vyhlazení profilu pak soubor otevři ve WTracks a použij **Tools → Smooth**. [gpx.studio](https://gpx.studio/) · [Mapy.com](https://mapy.com/)
+
 ## Referenční jízda
 
 Nejprve načti GPX. Tlačítkem **Referenční jízda…** vyber z historie jízdu s GPS záznamem nebo načti TCX s časovými značkami a GPS body. Záznam musí pokrývat stejnou trasu či úsek ve stejném směru. Jízda s referencí začíná od startu GPX. Během jízdy údaj **s napřed** nebo **s pozadu** porovnává časy na stejném místě a fialová značka ukazuje, kde by soupeř byl ve stejném čase. Pauzy z referenčního záznamu se započítávají.
